@@ -1,0 +1,9 @@
+# Apple Specific
+.DS_Store
+
+# IntelliJ Files
+/.idea
+FaaSClient.iml
+
+# Ignore Build Folder
+/target
