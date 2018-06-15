@@ -1,5 +1,7 @@
 package com.liveperson.faas.dto;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -52,5 +54,16 @@ public class FaaSInvocation<T> {
 
     public void setPayload(T payload) {
         this.payload = payload;
+    }
+
+    @Override
+    public String toString(){
+        ObjectMapper objectMapper = new ObjectMapper();
+        try{
+            String json = objectMapper.writeValueAsString(this);
+            return json.replaceAll("\"payload\":null}$", "\"payload\":{}}");
+        } catch(Exception e){
+            return "";
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.liveperson.faas.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liveperson.faas.dto.FaaSInvocation;
+import com.liveperson.faas.exception.FaaSException;
 import com.liveperson.faas.util.Dummy;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -11,7 +12,9 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -92,6 +95,46 @@ public class FaaSClientTest {
     }
 
     @Test
+    public void stringInvocationWithoutPayloadUUIDTest() throws Exception {
+        //#############
+        //# Prepare
+        //#############
+        //Set test specific data
+        long timestamp = System.currentTimeMillis();
+
+        //Set method mocks for mock objects
+        //Mock the lambda invocation - response body
+        when(responseEntityMock.getBody()).thenReturn("\"lambda_result\"");
+        //Mock the lambda invocation
+        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
+                .thenReturn(responseEntityMock);
+
+        //Create faas client instance
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+
+        //Create invocation data object
+        FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, null);
+        invocationData.setTimestamp(timestamp);
+
+        //#############
+        //# Execute
+        //#############
+        String response = client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+
+        //#############
+        //# Verify
+        //#############
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp, "[]", "{}"), httpEntityCaptor.getValue().getBody());
+
+        assertEquals("Lambda invocation with wrong authorization header",
+                authHeader, httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0));
+
+        assertEquals("Lambda invocation result does not match expected value",
+                "lambda_result", response);
+    }
+
+    @Test
     public void objectInvocationViaUUIDTest() throws Exception {
         //#############
         //# Prepare
@@ -137,5 +180,67 @@ public class FaaSClientTest {
         expectedResponse.key = "responseKey";
         expectedResponse.value = "responseValue";
         assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(), response.toString());
+    }
+
+    @Test(expected = FaaSException.class)
+    public void throwFaaSExceptionAtHttpError() throws Exception{
+        //#############
+        //# Prepare
+        //#############
+        //Set test specific data
+        long timestamp = System.currentTimeMillis();
+
+        //Set method mocks for mock objects
+        //Mock the lambda invocation
+        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Error", "body".getBytes(), null));
+
+        //Create faas client instance
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+
+        //Create invocation data object
+        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+        invocationData.setTimestamp(timestamp);
+
+        //#############
+        //# Execute
+        //#############
+        client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+    }
+
+    @Test(expected = FaaSException.class)
+    public void throwFaaSExceptionAtOtherError() throws Exception{
+        //#############
+        //# Prepare
+        //#############
+        //Set test specific data
+        long timestamp = System.currentTimeMillis();
+
+        //Set method mocks for mock objects
+        //Mock the lambda invocation
+        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
+                .thenThrow(NullPointerException.class);
+
+        //Create faas client instance
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+
+        //Create invocation data object
+        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+        invocationData.setTimestamp(timestamp);
+
+        //#############
+        //# Execute
+        //#############
+        client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+    }
+
+    @Test
+    public void getInstanceViaCSDSDomain() throws Exception {
+        FaaSWebClient.getInstance("192.168.21.129:8080");
+    }
+
+    @Test
+    public void getInstanceViaHostPort() throws Exception {
+        FaaSWebClient.getInstance("localhost", 9902);
     }
 }

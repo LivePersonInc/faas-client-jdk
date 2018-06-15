@@ -98,11 +98,8 @@ public class FaaSWebClient implements FaaSClient {
                     .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
             String url = uriComponents.toUriString();
 
-            // Parse invocation object to JSON string
-            String requestBody = objectMapper.writeValueAsString(data);
-
             // Execute the lambda invocation
-            HttpEntity<String> request = new HttpEntity<String>(requestBody, this.setHeaders(authHeader));
+            HttpEntity<String> request = new HttpEntity<String>(data.toString(), this.setHeaders(authHeader));
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
 
             // Parse and return lambda result
