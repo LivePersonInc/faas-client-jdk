@@ -10,19 +10,17 @@ String externalSystem = "botStudio";
 //oAuth1.0 authorization header
 String authHeader = "OAuth oauth_consumer_key=3c5ffb9e07...";
 
-//Create invocation data => Send via body during invocation
-FaaSInvocation<User> invocationData = new FaaSInvocation();
-
 //Set header
 Map<String, String> headers = new HashMap<String, String>() {{
     put("Accept-Language", "en-US");
 }};
-invocationData.setHeaders(headers);
 
 //Set payload
-User user = new User();
-user.name = "John Doe";
-invocationData.setPayload(user);
+User payload = new User();
+payload.name = "John Doe";
+
+//Create invocation data => Send via body during invocation
+FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 ```
 
 ## Invoking a lambda via the RESTful API
