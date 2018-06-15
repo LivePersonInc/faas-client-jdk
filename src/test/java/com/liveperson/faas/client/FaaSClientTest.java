@@ -70,8 +70,7 @@ public class FaaSClientTest {
         FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
 
         //Create invocation data object
-        FaaSInvocation<String> invocationData = new FaaSInvocation<String>();
-        invocationData.setPayload(payload);
+        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
         invocationData.setTimestamp(timestamp);
 
         //#############

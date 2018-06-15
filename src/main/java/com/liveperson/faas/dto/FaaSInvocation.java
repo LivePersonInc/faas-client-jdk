@@ -19,6 +19,13 @@ public class FaaSInvocation<T> {
         this.headers = new ArrayList<FaaSKeyValue>();
     }
 
+    public FaaSInvocation(Map<String, String> headerMap, T payload) {
+        this.timestamp = System.currentTimeMillis();
+        this.headers = new ArrayList<FaaSKeyValue>();
+        setHeaders(headerMap);
+        this.payload = payload;
+    }
+
     public long getTimestamp() {
         return timestamp;
     }
@@ -32,6 +39,8 @@ public class FaaSInvocation<T> {
     }
 
     public void setHeaders(Map<String, String> headerMap) {
+        if (headerMap == null)
+            return;
         for (Map.Entry<String, String> entry : headerMap.entrySet()) {
             this.headers.add(new FaaSKeyValue(entry.getKey(), entry.getValue()));
         }
