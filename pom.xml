@@ -10,7 +10,7 @@
 
     <groupId>com.liveperson.faas</groupId>
     <artifactId>FaaSClient</artifactId>
-    <version>0.1.0.2-SNAPSHOT</version>
+    <version>0.1.0.3-SNAPSHOT</version>
     <name>FaaS Client</name>
     <description>FaaS client for invoking lambdas via the eventsource gateway (a.k.a Asgard)</description>
 
@@ -30,7 +30,7 @@
         <connection>scm:git:https://ci_user@lpgithub.dev.lprnd.net/RnD-Mannheim/faas-client.git</connection>
         <developerConnection>scm:git:https://ci_user@lpgithub.dev.lprnd.net/RnD-Mannheim/faas-client.git</developerConnection>
         <url>https://lpgithub.dev.lprnd.net/RnD-Mannheim/faas-client</url>
-        <tag>FaaSClient-0.1.0.3</tag>
+        <tag>FaaSClient-0.1.0.4</tag>
     </scm>
 
     <dependencies>
