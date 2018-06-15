@@ -7,3 +7,6 @@ FaaSClient.iml
 
 # Ignore Build Folder
 /target
+
+FaaSClient.ipr
+FaaSClient.iws
