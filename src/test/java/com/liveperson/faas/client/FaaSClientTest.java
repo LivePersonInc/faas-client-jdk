@@ -3,6 +3,8 @@ package com.liveperson.faas.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
+import com.liveperson.faas.security.OAuthSignaturBuilder;
 import com.liveperson.faas.util.Dummy;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,11 +38,13 @@ public class FaaSClientTest {
     ArgumentCaptor<HttpEntity> httpEntityCaptor;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final String apiKey = "a6e8ddd8995344cb8a8373a060958e7a";
+    private final String apiSecret = "a13d4dee1f7ab6e0";
+    private final OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(apiKey, apiSecret);
     private String apiVersion = "1";
     private String externalSystem = "test_system";
     private String accountId = "le49829325";
     private String lambdaUUID = "81ec57ed-b353-4c71-8543-423364db169d";
-    private String authHeader = "dummy_auth_header";
     private String gatewayUrl = "192.168.21.129:8080";
 
     private String getExpectedUrl() {
@@ -70,7 +74,7 @@ public class FaaSClientTest {
                 .thenReturn(responseEntityMock);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
@@ -79,7 +83,7 @@ public class FaaSClientTest {
         //#############
         //# Execute
         //#############
-        String response = client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+        String response = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
 
         //#############
         //# Verify
@@ -87,8 +91,7 @@ public class FaaSClientTest {
         assertEquals("Lambda invocation with the wrong body",
                 getExpectedRequestBody(timestamp, "[]", "\"request_data\""), httpEntityCaptor.getValue().getBody());
 
-        assertEquals("Lambda invocation with wrong authorization header",
-                authHeader, httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0));
+        assertTrue("Lambda invocation with wrong authorization header", httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0).contains("OAuth"));
 
         assertEquals("Lambda invocation result does not match expected value",
                 "lambda_result", response);
@@ -110,7 +113,7 @@ public class FaaSClientTest {
                 .thenReturn(responseEntityMock);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, null);
@@ -119,7 +122,7 @@ public class FaaSClientTest {
         //#############
         //# Execute
         //#############
-        String response = client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+        String response = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
 
         //#############
         //# Verify
@@ -127,8 +130,7 @@ public class FaaSClientTest {
         assertEquals("Lambda invocation with the wrong body",
                 getExpectedRequestBody(timestamp, "[]", "{}"), httpEntityCaptor.getValue().getBody());
 
-        assertEquals("Lambda invocation with wrong authorization header",
-                authHeader, httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0));
+        assertTrue("Lambda invocation with wrong authorization header", httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0).contains("OAuth"));
 
         assertEquals("Lambda invocation result does not match expected value",
                 "lambda_result", response);
@@ -151,7 +153,7 @@ public class FaaSClientTest {
                 .thenReturn(responseEntityMock);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<Dummy> invocationData = new FaaSInvocation();
@@ -164,7 +166,7 @@ public class FaaSClientTest {
         //#############
         //# Execute
         //#############
-        Dummy response = client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, Dummy.class);
+        Dummy response = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, Dummy.class);
 
         //#############
         // # Verify
@@ -173,8 +175,7 @@ public class FaaSClientTest {
                 getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key\":\"requestKey\",\"value\":\"requestValue\"}"),
                 httpEntityCaptor.getValue().getBody());
 
-        assertEquals("Lambda invocation with wrong authorization header",
-                authHeader, httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0));
+        assertTrue("Lambda invocation with wrong authorization header", httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0).contains("OAuth"));
 
         Dummy expectedResponse = new Dummy();
         expectedResponse.key = "responseKey";
@@ -196,7 +197,7 @@ public class FaaSClientTest {
                 .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Error", "body".getBytes(), null));
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -205,7 +206,7 @@ public class FaaSClientTest {
         //#############
         //# Execute
         //#############
-        client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+        client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
     }
 
     @Test(expected = FaaSException.class)
@@ -222,7 +223,7 @@ public class FaaSClientTest {
                 .thenThrow(NullPointerException.class);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -231,16 +232,16 @@ public class FaaSClientTest {
         //#############
         //# Execute
         //#############
-        client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, String.class);
+        client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
     }
 
     @Test
     public void getInstanceViaCSDSDomain() throws Exception {
-        FaaSWebClient.getInstance("192.168.21.129:8080");
+        FaaSWebClient.getInstance("192.168.21.129:8080", apiKey, apiSecret);
     }
 
     @Test
     public void getInstanceViaHostPort() throws Exception {
-        FaaSWebClient.getInstance("localhost", 9902);
+        FaaSWebClient.getInstance("localhost", 9902, apiKey, apiSecret);
     }
 }

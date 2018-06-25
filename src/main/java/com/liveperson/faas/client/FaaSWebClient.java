@@ -6,6 +6,8 @@ import com.liveperson.csds.client.api.CsdsClient;
 import com.liveperson.csds.client.api.CsdsWebClientConfig;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
+import com.liveperson.faas.security.OAuthSignaturBuilder;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
@@ -40,29 +42,36 @@ public class FaaSWebClient implements FaaSClient {
     private String gateway;
     private CsdsClient csdsClient;
     private RestTemplate restTemplate;
+    private OAuthSignaturBuilder oAuthSignaturBuilder;
 
     /**
      * Factory method to create a instance of the FaaSClient
      * @param csdsDomain the domain of the csds server
+     * @param consumerKey the API key granted
+     * @param consumerSecret the API secret granted
      * @return faas client instance
      * @throws FaaSException
      */
-    public static FaaSClient getInstance(String csdsDomain) throws FaaSException{
+    public static FaaSClient getInstance(String csdsDomain, String consumerKey, String consumerSecret) throws FaaSException{
         RestTemplate restTemplate = FaaSWebClient.createRestTemplate();
-        return new FaaSWebClient(FaaSWebClient.getCsdsClient(csdsDomain), restTemplate);
+        OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
+        return new FaaSWebClient(FaaSWebClient.getCsdsClient(csdsDomain), restTemplate, oAuthSignaturBuilder);
     }
 
     /**
      * Factory method to create a instance of the FaaSClient
      * @param host the hostname of the eventsource gateway
      * @param port the port of the eventsource gateway
+     * @param consumerKey the API key granted
+     * @param consumerSecret the API secret granted
      * @return faas client instance
      * @throws FaaSException
      */
-    public static FaaSClient getInstance(String host, int port) {
+    public static FaaSClient getInstance(String host, int port, String consumerKey, String consumerSecret) {
         String gatewayUrl = String.format("%s:%d", host, port);
         RestTemplate restTemplate = FaaSWebClient.createRestTemplate();
-        return new FaaSWebClient(gatewayUrl, restTemplate);
+        OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
+        return new FaaSWebClient(gatewayUrl, restTemplate, oAuthSignaturBuilder);
     }
 
     /**
@@ -71,9 +80,10 @@ public class FaaSWebClient implements FaaSClient {
      * @param restTemplate the rest client instance
      * @throws FaaSException
      */
-    public FaaSWebClient(CsdsClient csdsClient, RestTemplate restTemplate) throws FaaSException {
+    public FaaSWebClient(CsdsClient csdsClient, RestTemplate restTemplate, OAuthSignaturBuilder oAuthSignaturBuilder) throws FaaSException {
         this.csdsClient = csdsClient;
         this.restTemplate = restTemplate;
+        this.oAuthSignaturBuilder = oAuthSignaturBuilder;
     }
 
     /**
@@ -81,12 +91,13 @@ public class FaaSWebClient implements FaaSClient {
      * @param gateway the eventsource gateway domain for the invocation
      * @param restTemplate the rest client instance
      */
-    public FaaSWebClient(String gateway, RestTemplate restTemplate) {
+    public FaaSWebClient(String gateway, RestTemplate restTemplate, OAuthSignaturBuilder oAuthSignaturBuilder) {
         this.gateway = gateway;
         this.restTemplate = restTemplate;
+        this.oAuthSignaturBuilder = oAuthSignaturBuilder;
     }
 
-    public <T> T invoke(String externalSystem, String authHeader, String accountId, String lambdaUUID, FaaSInvocation data, Class<T> responseType) throws FaaSException {
+    public <T> T invoke(String externalSystem, String accountId, String lambdaUUID, FaaSInvocation data, Class<T> responseType) throws FaaSException {
         try {
             // Create the complete url for invocation
             String invokeUri = String.format(this.INVOKE_URI, accountId, lambdaUUID);
@@ -97,6 +108,9 @@ public class FaaSWebClient implements FaaSClient {
                     .queryParam(QUERY_PARAM_USERID, externalSystem)
                     .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
             String url = uriComponents.toUriString();
+
+            // Generate the oAuth authorization header
+            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.POST, url);
 
             // Execute the lambda invocation
             HttpEntity<String> request = new HttpEntity<String>(data.toString(), this.setHeaders(authHeader));

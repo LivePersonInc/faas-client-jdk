@@ -12,7 +12,6 @@ public interface FaaSClient {
     /**
      * Invoking a lambda per brand via the RESTful api
      * @param externalSystem the name of the external system doing the invocation
-     * @param authHeader the authorization header used to verify invocation permission
      * @param accountId the brand/account id
      * @param lambdaUUID the global unique identifier of a lambda
      * @param data the invocation payload containing timestamp (ms), headers and payload send to the lambda
@@ -20,5 +19,5 @@ public interface FaaSClient {
      * @return the response object of type responseType
      * @throws FaaSException
      */
-    public <T> T invoke(String externalSystem, String authHeader, String accountId, String lambdaUUID, FaaSInvocation data, Class<T> responseType) throws FaaSException;
+    public <T> T invoke(String externalSystem, String accountId, String lambdaUUID, FaaSInvocation data, Class<T> responseType) throws FaaSException;
 }

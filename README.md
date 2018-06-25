@@ -6,9 +6,8 @@ FaaS client for invoking lambdas via the eventsource gateway (a.k.a Asgard)
 String accountId = "le49829325";
 String lambdaUUID = "545fc8a2-b9d9-4e76-9b55-17b38e6181c9";
 String externalSystem = "botStudio";
-
-//oAuth1.0 authorization header
-String authHeader = "OAuth oauth_consumer_key=3c5ffb9e07...";
+String apiKey = "d7e8ddd8995344cb8a8373a060958e7f";
+String apiSecret = "b16d4dee1f7ab6e4";
 
 //Set header
 Map<String, String> headers = new HashMap<String, String>() {{
@@ -27,9 +26,9 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 ```java
 try {
     //Initialize FaaS client with the CSDSDomain
-    FaaSClient client = FaaSWebClient.getInstance(csdsDomain);
+    FaaSClient client = FaaSWebClient.getInstance(csdsDomain, apiKey, apiSecret);
 
-    User result = client.invoke(externalSystem, authHeader, accountId, lambdaUUID, invocationData, User.class);
+    User result = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, User.class);
     ...
 
 } catch (FaaSException e) {...}
