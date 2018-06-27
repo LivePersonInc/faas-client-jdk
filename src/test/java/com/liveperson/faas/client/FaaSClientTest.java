@@ -1,8 +1,10 @@
 package com.liveperson.faas.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.liveperson.csds.client.CsdsWebClient;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.http.RestClient;
 import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
 import com.liveperson.faas.security.OAuthSignaturBuilder;
 import com.liveperson.faas.util.Dummy;
@@ -12,13 +14,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,10 +30,13 @@ public class FaaSClientTest {
     ResponseEntity<String> responseEntityMock;
 
     @Mock
-    RestTemplate restTemplateMock;
+    RestClient restClientMock;
 
     @Captor
-    ArgumentCaptor<HttpEntity> httpEntityCaptor;
+    ArgumentCaptor<Map<String, String>> httpHeaderCaptor;
+
+    @Captor
+    ArgumentCaptor<String> httpBodyCaptor;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String apiKey = "a6e8ddd8995344cb8a8373a060958e7a";
@@ -67,14 +68,11 @@ public class FaaSClientTest {
         long timestamp = System.currentTimeMillis();
 
         //Set method mocks for mock objects
-        //Mock the lambda invocation - response body
-        when(responseEntityMock.getBody()).thenReturn("\"lambda_result\"");
         //Mock the lambda invocation
-        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
-                .thenReturn(responseEntityMock);
+        when(restClientMock.post(eq(getExpectedUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
@@ -89,9 +87,9 @@ public class FaaSClientTest {
         //# Verify
         //#############
         assertEquals("Lambda invocation with the wrong body",
-                getExpectedRequestBody(timestamp, "[]", "\"request_data\""), httpEntityCaptor.getValue().getBody());
+                getExpectedRequestBody(timestamp, "[]", "\"request_data\""), httpBodyCaptor.getValue());
 
-        assertTrue("Lambda invocation with wrong authorization header", httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0).contains("OAuth"));
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
 
         assertEquals("Lambda invocation result does not match expected value",
                 "lambda_result", response);
@@ -106,14 +104,11 @@ public class FaaSClientTest {
         long timestamp = System.currentTimeMillis();
 
         //Set method mocks for mock objects
-        //Mock the lambda invocation - response body
-        when(responseEntityMock.getBody()).thenReturn("\"lambda_result\"");
         //Mock the lambda invocation
-        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
-                .thenReturn(responseEntityMock);
+        when(restClientMock.post(eq(getExpectedUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, null);
@@ -128,9 +123,9 @@ public class FaaSClientTest {
         //# Verify
         //#############
         assertEquals("Lambda invocation with the wrong body",
-                getExpectedRequestBody(timestamp, "[]", "{}"), httpEntityCaptor.getValue().getBody());
+                getExpectedRequestBody(timestamp, "[]", "{}"), httpBodyCaptor.getValue());
 
-        assertTrue("Lambda invocation with wrong authorization header", httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0).contains("OAuth"));
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
 
         assertEquals("Lambda invocation result does not match expected value",
                 "lambda_result", response);
@@ -148,12 +143,11 @@ public class FaaSClientTest {
         long timestamp = System.currentTimeMillis();
 
         //Set method mocks for mock objects
-        when(responseEntityMock.getBody()).thenReturn("{\"key\":\"responseKey\",\"value\":\"responseValue\"}");
-        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
-                .thenReturn(responseEntityMock);
+        when(restClientMock.post(eq(getExpectedUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture())).thenReturn("{\"key\":\"responseKey\",\"value\":\"responseValue\"}");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<Dummy> invocationData = new FaaSInvocation();
@@ -173,9 +167,9 @@ public class FaaSClientTest {
         //#############
         assertEquals("Lambda invocation with the wrong body",
                 getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key\":\"requestKey\",\"value\":\"requestValue\"}"),
-                httpEntityCaptor.getValue().getBody());
+                httpBodyCaptor.getValue());
 
-        assertTrue("Lambda invocation with wrong authorization header", httpEntityCaptor.getValue().getHeaders().get("Authorization").get(0).contains("OAuth"));
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
 
         Dummy expectedResponse = new Dummy();
         expectedResponse.key = "responseKey";
@@ -193,11 +187,11 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Error", "body".getBytes(), null));
+        when(restClientMock.post(eq(getExpectedUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
+                .thenThrow(new IOException("Error during rest call."));
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -219,11 +213,11 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restTemplateMock.exchange(eq(getExpectedUrl()), eq(HttpMethod.POST), httpEntityCaptor.capture(), eq(String.class)))
+        when(restClientMock.post(eq(getExpectedUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
                 .thenThrow(NullPointerException.class);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restTemplateMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -243,5 +237,10 @@ public class FaaSClientTest {
     @Test
     public void getInstanceViaHostPort() throws Exception {
         FaaSWebClient.getInstance("localhost", 9902, apiKey, apiSecret);
+    }
+
+    @Test
+    public void getInstanceViaCSDSClient() throws Exception {
+        FaaSWebClient.getInstance(CsdsWebClient.getInstance(), apiKey, apiSecret);
     }
 }

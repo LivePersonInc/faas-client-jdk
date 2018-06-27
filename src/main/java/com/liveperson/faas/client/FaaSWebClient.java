@@ -6,15 +6,17 @@ import com.liveperson.csds.client.api.CsdsClient;
 import com.liveperson.csds.client.api.CsdsWebClientConfig;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.http.DefaultRestClient;
+import com.liveperson.faas.http.RestClient;
 import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
 import com.liveperson.faas.security.OAuthSignaturBuilder;
-import org.springframework.http.*;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * FaaS web client for invoking lambdas of a account/brand
@@ -31,9 +33,9 @@ public class FaaSWebClient implements FaaSClient {
     private static final int REST_CLIENT_READ_TIMOUT = 10000; //10 sec
 
     private static final String PROTOCOL = "http";
+    private static final int DEFAULT_PORT = 80;
     private static final String QUERY_PARAM_USERID = "userId";
     private static final String QUERY_PARAM_APIVERSION = "v";
-    private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String API_VERSION = "1";
     private static final String INVOKE_URI = "api/account/%s/lambdas/%s/invoke";
 
@@ -41,7 +43,7 @@ public class FaaSWebClient implements FaaSClient {
 
     private String gateway;
     private CsdsClient csdsClient;
-    private RestTemplate restTemplate;
+    private RestClient restClient;
     private OAuthSignaturBuilder oAuthSignaturBuilder;
 
     /**
@@ -53,47 +55,61 @@ public class FaaSWebClient implements FaaSClient {
      * @throws FaaSException
      */
     public static FaaSClient getInstance(String csdsDomain, String consumerKey, String consumerSecret) throws FaaSException{
-        RestTemplate restTemplate = FaaSWebClient.createRestTemplate();
+        RestClient restClient = new DefaultRestClient(REST_CLIENT_READ_TIMOUT, REST_CLIENT_CONNECTION_TIMOUT);
         OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
-        return new FaaSWebClient(FaaSWebClient.getCsdsClient(csdsDomain), restTemplate, oAuthSignaturBuilder);
+        return new FaaSWebClient(FaaSWebClient.getCsdsClient(csdsDomain), restClient, oAuthSignaturBuilder);
+    }
+
+    /**
+     * Factory method to create a instance of the FaaSClient
+     * @param csdsClient the csds client instance
+     * @param consumerKey the API key granted
+     * @param consumerSecret the API secret granted
+     * @return faas client instance
+     * @throws FaaSException
+     */
+    public static FaaSClient getInstance(CsdsClient csdsClient, String consumerKey, String consumerSecret) throws FaaSException{
+        RestClient restClient = new DefaultRestClient(REST_CLIENT_READ_TIMOUT, REST_CLIENT_CONNECTION_TIMOUT);
+        OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
+        return new FaaSWebClient(csdsClient, restClient, oAuthSignaturBuilder);
     }
 
     /**
      * Factory method to create a instance of the FaaSClient
      * @param host the hostname of the eventsource gateway
-     * @param port the port of the eventsource gateway
+     * @param port the port of the eventsource gateway (set -1 is not needed)
      * @param consumerKey the API key granted
      * @param consumerSecret the API secret granted
      * @return faas client instance
      * @throws FaaSException
      */
     public static FaaSClient getInstance(String host, int port, String consumerKey, String consumerSecret) {
-        String gatewayUrl = String.format("%s:%d", host, port);
-        RestTemplate restTemplate = FaaSWebClient.createRestTemplate();
+        String gatewayUrl = port == DEFAULT_PORT ? host : String.format("%s:%d", host, port);
+        RestClient restClient = new DefaultRestClient(REST_CLIENT_READ_TIMOUT, REST_CLIENT_CONNECTION_TIMOUT);
         OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
-        return new FaaSWebClient(gatewayUrl, restTemplate, oAuthSignaturBuilder);
+        return new FaaSWebClient(gatewayUrl, restClient, oAuthSignaturBuilder);
     }
 
     /**
      * Constructor for invocation via CSDS domain resolution of Eventsource Gatewaay
      * @param csdsClient csds client used to the csds resolution
-     * @param restTemplate the rest client instance
+     * @param restClient the rest client instance
      * @throws FaaSException
      */
-    public FaaSWebClient(CsdsClient csdsClient, RestTemplate restTemplate, OAuthSignaturBuilder oAuthSignaturBuilder) throws FaaSException {
+    public FaaSWebClient(CsdsClient csdsClient, RestClient restClient, OAuthSignaturBuilder oAuthSignaturBuilder) throws FaaSException {
         this.csdsClient = csdsClient;
-        this.restTemplate = restTemplate;
+        this.restClient = restClient;
         this.oAuthSignaturBuilder = oAuthSignaturBuilder;
     }
 
     /**
      * Constructor for direct invocation via host + port
      * @param gateway the eventsource gateway domain for the invocation
-     * @param restTemplate the rest client instance
+     * @param restClient the rest client instance
      */
-    public FaaSWebClient(String gateway, RestTemplate restTemplate, OAuthSignaturBuilder oAuthSignaturBuilder) {
+    public FaaSWebClient(String gateway, RestClient restClient, OAuthSignaturBuilder oAuthSignaturBuilder) {
         this.gateway = gateway;
-        this.restTemplate = restTemplate;
+        this.restClient = restClient;
         this.oAuthSignaturBuilder = oAuthSignaturBuilder;
     }
 
@@ -107,35 +123,21 @@ public class FaaSWebClient implements FaaSClient {
                     .pathSegment(invokeUri)
                     .queryParam(QUERY_PARAM_USERID, externalSystem)
                     .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
+
+
             String url = uriComponents.toUriString();
 
             // Generate the oAuth authorization header
             String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.POST, url);
 
             // Execute the lambda invocation
-            HttpEntity<String> request = new HttpEntity<String>(data.toString(), this.setHeaders(authHeader));
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            String response = restClient.post(url, this.setHeaders(authHeader), data.toString());
 
             // Parse and return lambda result
-            return objectMapper.readValue(response.getBody(), responseType);
-        } catch(HttpClientErrorException e){
-            throw new FaaSException("Received status code " + e.getStatusCode() + " and error " + e.getResponseBodyAsString(), e);
+            return objectMapper.readValue(response, responseType);
         } catch(Exception e ){
             throw new FaaSException("Error occured during lambda invocation", e);
         }
-    }
-
-    /**
-     * Create a new rest client
-     */
-    private static RestTemplate createRestTemplate(){
-        RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setRequestFactory(new SimpleClientHttpRequestFactory());
-        SimpleClientHttpRequestFactory rf = (SimpleClientHttpRequestFactory) restTemplate
-                .getRequestFactory();
-        rf.setConnectTimeout(REST_CLIENT_CONNECTION_TIMOUT);
-        rf.setReadTimeout(REST_CLIENT_READ_TIMOUT);
-        return restTemplate;
     }
 
     /**
@@ -162,10 +164,9 @@ public class FaaSWebClient implements FaaSClient {
      * @param authorizationHeader the authorization header
      * @return the relevant headers
      */
-    private HttpHeaders setHeaders(String authorizationHeader) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set(HEADER_AUTHORIZATION, authorizationHeader);
+    private Map<String, String> setHeaders(String authorizationHeader) {
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put(HttpHeaders.AUTHORIZATION, authorizationHeader);
         return headers;
     }
 
