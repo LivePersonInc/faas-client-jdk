@@ -1,6 +1,9 @@
 package com.liveperson.faas.util;
 
-public class Dummy {
+/**
+ * Response test data structure for invocation by lambda UUID
+ */
+public class UUIDResponse {
     public String key;
     public String value;
 

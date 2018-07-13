@@ -1,5 +1,6 @@
 package com.liveperson.faas.client;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.liveperson.csds.api.BaseURIData;
 import com.liveperson.csds.client.CsdsWebClient;
 import com.liveperson.csds.client.api.CsdsClient;
@@ -11,8 +12,11 @@ import com.liveperson.faas.http.RestClient;
 import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
 import com.liveperson.faas.security.OAuthSignaturBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import java.util.HashMap;
@@ -26,7 +30,7 @@ import java.util.Map;
  */
 public class FaaSWebClient implements FaaSClient {
 
-    private static final String CSDS_SERVICE_NAME = "faasGW";
+    public static final String CSDS_SERVICE_NAME = "faasGW";
     private static final String CSDS_DISK_STORAGE_PATH = "/tmp/";
 
     private static final int REST_CLIENT_CONNECTION_TIMOUT = 5000; //5 sec
@@ -37,7 +41,8 @@ public class FaaSWebClient implements FaaSClient {
     private static final String QUERY_PARAM_USERID = "userId";
     private static final String QUERY_PARAM_APIVERSION = "v";
     private static final String API_VERSION = "1";
-    private static final String INVOKE_URI = "api/account/%s/lambdas/%s/invoke";
+    private static final String INVOKE_UUID_URI = "api/account/%s/lambdas/%s/invoke";
+    private static final String INVOKE_EVENT_URI = "api/account/%s/events/%s/invoke";
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -116,7 +121,34 @@ public class FaaSWebClient implements FaaSClient {
     public <T> T invoke(String externalSystem, String accountId, String lambdaUUID, FaaSInvocation data, Class<T> responseType) throws FaaSException {
         try {
             // Create the complete url for invocation
-            String invokeUri = String.format(this.INVOKE_URI, accountId, lambdaUUID);
+            String invokeUri = String.format(this.INVOKE_UUID_URI, accountId, lambdaUUID);
+            UriComponents uriComponents = UriComponentsBuilder.newInstance()
+                    .scheme(PROTOCOL)
+                    .host(this.getGatewayDomain(accountId))
+                    .pathSegment(invokeUri)
+                    .queryParam(QUERY_PARAM_USERID, externalSystem)
+                    .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
+
+
+            String url = uriComponents.toUriString();
+
+            // Generate the oAuth authorization header
+            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.POST, url);
+
+            // Execute the lambda invocation
+            String response = restClient.post(url, this.setHeaders(authHeader), data.toString());
+
+            // Parse and return lambda result
+            return objectMapper.readValue(response, responseType);
+        } catch(Exception e ){
+            throw new FaaSException("Error occured during lambda invocation", e);
+        }
+    }
+
+    public <T> T invoke(String externalSystem, String accountId, FaaSEvent event, FaaSInvocation data, Class<T> responseType) throws FaaSException {
+        try {
+            // Create the complete url for invocation
+            String invokeUri = String.format(this.INVOKE_EVENT_URI, accountId, event);
             UriComponents uriComponents = UriComponentsBuilder.newInstance()
                     .scheme(PROTOCOL)
                     .host(this.getGatewayDomain(accountId))
