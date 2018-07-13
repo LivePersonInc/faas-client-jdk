@@ -62,7 +62,7 @@ try {
     //Initialize FaaS client with the CSDSDomain
     FaaSClient client = FaaSWebClient.getInstance(csdsDomain, apiKey, apiSecret);
 
-    Response[] result = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, Response[].class);
+    Response[] result = client.invoke(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class);
     ...
 
 } catch (FaaSException e) {...}
