@@ -36,7 +36,7 @@ public class FaaSWebClient implements FaaSClient {
     private static final int REST_CLIENT_CONNECTION_TIMOUT = 5000; //5 sec
     private static final int REST_CLIENT_READ_TIMOUT = 10000; //10 sec
 
-    private static final String PROTOCOL = "http";
+    private static final String PROTOCOL = "https";
     private static final int DEFAULT_PORT = 80;
     private static final String QUERY_PARAM_USERID = "userId";
     private static final String QUERY_PARAM_APIVERSION = "v";

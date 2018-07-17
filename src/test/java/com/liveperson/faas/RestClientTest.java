@@ -21,7 +21,7 @@ public class RestClientTest {
 
     private static int mockServerPort = 9000;
     private static HttpServer mockServer;
-    private static String baseUrl = "http://localhost:" + mockServerPort;
+    private static String baseUrl = "https://localhost:" + mockServerPort;
 
     //Define handler for success route of http server
     public static class SuccessHandler implements HttpHandler {
