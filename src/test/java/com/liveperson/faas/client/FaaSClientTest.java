@@ -55,12 +55,12 @@ public class FaaSClientTest {
     private String gatewayUrl = "192.168.21.129:8080";
 
     private String getExpectedUUIDUrl() {
-        String expectedUrl = "http://%s/api/account/%s/lambdas/%s/invoke?userId=%s&v=%s";
+        String expectedUrl = "https://%s/api/account/%s/lambdas/%s/invoke?userId=%s&v=%s";
         return String.format(expectedUrl, gatewayUrl, accountId, lambdaUUID, externalSystem, apiVersion);
     }
 
     private String getExpectedEventUrl() {
-        String expectedUrl = "http://%s/api/account/%s/events/%s/invoke?userId=%s&v=%s";
+        String expectedUrl = "https://%s/api/account/%s/events/%s/invoke?userId=%s&v=%s";
         return String.format(expectedUrl, gatewayUrl, accountId, event, externalSystem, apiVersion);
     }
 
