@@ -1,7 +1,5 @@
-package com.liveperson.faas;
+package com.liveperson.faas.http;
 
-import com.liveperson.faas.http.DefaultRestClient;
-import com.liveperson.faas.http.RestClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;

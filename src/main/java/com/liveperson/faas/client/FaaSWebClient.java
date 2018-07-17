@@ -1,6 +1,5 @@
 package com.liveperson.faas.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.liveperson.csds.api.BaseURIData;
 import com.liveperson.csds.client.CsdsWebClient;
 import com.liveperson.csds.client.api.CsdsClient;
@@ -12,11 +11,8 @@ import com.liveperson.faas.http.RestClient;
 import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
 import com.liveperson.faas.security.OAuthSignaturBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import java.util.HashMap;
@@ -36,8 +32,8 @@ public class FaaSWebClient implements FaaSClient {
     private static final int REST_CLIENT_CONNECTION_TIMOUT = 5000; //5 sec
     private static final int REST_CLIENT_READ_TIMOUT = 10000; //10 sec
 
-    private static final String PROTOCOL = "http";
-    private static final int DEFAULT_PORT = 80;
+    private static final String PROTOCOL = "https";
+    private static final int DEFAULT_PORT = 443;
     private static final String QUERY_PARAM_USERID = "userId";
     private static final String QUERY_PARAM_APIVERSION = "v";
     private static final String API_VERSION = "1";
