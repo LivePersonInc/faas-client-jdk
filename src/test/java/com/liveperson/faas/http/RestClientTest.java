@@ -1,7 +1,5 @@
-package com.liveperson.faas;
+package com.liveperson.faas.http;
 
-import com.liveperson.faas.http.DefaultRestClient;
-import com.liveperson.faas.http.RestClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -21,7 +19,7 @@ public class RestClientTest {
 
     private static int mockServerPort = 9000;
     private static HttpServer mockServer;
-    private static String baseUrl = "https://localhost:" + mockServerPort;
+    private static String baseUrl = "http://localhost:" + mockServerPort;
 
     //Define handler for success route of http server
     public static class SuccessHandler implements HttpHandler {
