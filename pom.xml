@@ -10,7 +10,7 @@
 
     <groupId>com.liveperson.faas</groupId>
     <artifactId>FaaSClient</artifactId>
-    <version>0.1.0.6-SNAPSHOT</version>
+    <version>0.1.0.7-SNAPSHOT</version>
     <name>FaaS Client</name>
     <description>FaaS client for invoking lambdas via the eventsource gateway (a.k.a Asgard)</description>
 
