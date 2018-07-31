@@ -1,4 +1,4 @@
-# faas-client
+# FaaS-Client (Java)
 In order to invoke a lambda that has been deployed via FaaS, this Java based FaaS-Client can be used.
 The client is taking a POJO within the invoke method and hands it over to the eventsouce gateway api (a.k.a Asgard).
 
