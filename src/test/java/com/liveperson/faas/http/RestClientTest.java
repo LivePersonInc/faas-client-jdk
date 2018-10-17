@@ -60,7 +60,7 @@ public class RestClientTest {
     }
 
     @Test
-    public void successResponseTest() throws Exception{
+    public void successPostResponseTest() throws Exception{
         Map<String, String> headers = new HashMap<String, String>();
         headers.put("test", "test");
 
@@ -70,11 +70,30 @@ public class RestClientTest {
     }
 
     @Test(expected = IOException.class)
-    public void errorResponseTest() throws Exception{
+    public void errorPostResponseTest() throws Exception{
         Map<String, String> headers = new HashMap<String, String>();
         headers.put("test", "test");
 
         RestClient restClient = new DefaultRestClient(3000, 3000);
         String response = restClient.post(baseUrl + "/errorHandler", headers, "test");
+    }
+
+    @Test
+    public void successGetResponseTest() throws Exception{
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("test", "test");
+
+        RestClient restClient = new DefaultRestClient(3000, 3000);
+        String response = restClient.get( baseUrl + "/successHandler", headers);
+        assertEquals("Response not correctly received", "Test", response);
+    }
+
+    @Test(expected = IOException.class)
+    public void errorGetResponseTest() throws Exception{
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("test", "test");
+
+        RestClient restClient = new DefaultRestClient(3000, 3000);
+        String response = restClient.get( baseUrl + "/errorHandler", headers);
     }
 }

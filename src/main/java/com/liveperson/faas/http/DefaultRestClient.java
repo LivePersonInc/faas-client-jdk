@@ -113,4 +113,34 @@ public class DefaultRestClient implements RestClient{
             throw e;
         }
     }
+
+    public String get(String url, Map<String, String> headers) throws IOException{
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        try {
+            connection.setRequestMethod(HttpMethod.GET.name());
+            this.setHeaders(connection, headers);
+
+            connection.setConnectTimeout(this.connectTimeout);
+            connection.setReadTimeout(this.readTimeout);
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+
+            int status = connection.getResponseCode();
+
+            String response = "";
+
+            if (status >= HttpStatus.BAD_REQUEST.value()) {
+                connection.disconnect();
+                throw new IOException("Received response code " + status + " for url " + url);
+            }
+
+            response = this.readResponseBody(connection);
+
+            connection.disconnect();
+            return response;
+        } catch(Exception e){
+            connection.disconnect();
+            throw e;
+        }
+    }
 }
