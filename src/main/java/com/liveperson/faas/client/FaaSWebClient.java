@@ -192,7 +192,7 @@ public class FaaSWebClient implements FaaSClient {
             // Parse and return is implemented status
             return objectMapper.readValue(response, FaaSEventImplemented.class).getImplemented();
         } catch(Exception e ){
-            throw new FaaSException("Error occured during lambda invocation", e);
+            throw new FaaSException("Error occured during check if lambda is implemented.", e);
         }
     }
 
