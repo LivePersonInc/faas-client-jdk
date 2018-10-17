@@ -66,8 +66,14 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 try {
     //Initialize FaaS client with the CSDSDomain
     FaaSClient client = FaaSWebClient.getInstance(csdsDomain, apiKey, apiSecret);
+    
+    //Check if lambdas are implemented for event
+    boolean isImplemented = client.isImplemented(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript);
 
-    Response[] result = client.invoke(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class);
+    if(isImplemented){
+        //Invoke lambdas for event
+        Response[] result = client.invoke(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class);
+    }
     ...
 
 } catch (FaaSException e) {...}
