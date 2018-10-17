@@ -4,6 +4,7 @@ import com.liveperson.csds.api.BaseURIData;
 import com.liveperson.csds.client.CsdsWebClient;
 import com.liveperson.csds.client.api.CsdsClient;
 import com.liveperson.csds.client.api.CsdsWebClientConfig;
+import com.liveperson.faas.dto.FaaSEventImplemented;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
 import com.liveperson.faas.http.DefaultRestClient;
@@ -39,6 +40,7 @@ public class FaaSWebClient implements FaaSClient {
     private static final String API_VERSION = "1";
     private static final String INVOKE_UUID_URI = "api/account/%s/lambdas/%s/invoke";
     private static final String INVOKE_EVENT_URI = "api/account/%s/events/%s/invoke";
+    private static final String IS_IMPLEMENTED_URI = "api/account/%s/events/%s/isImplemented";
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -163,6 +165,32 @@ public class FaaSWebClient implements FaaSClient {
 
             // Parse and return lambda result
             return objectMapper.readValue(response, responseType);
+        } catch(Exception e ){
+            throw new FaaSException("Error occured during lambda invocation", e);
+        }
+    }
+
+    public boolean isImplemented(String externalSystem, String accountId, FaaSEvent event) throws FaaSException {
+        try {
+            // Create the complete url for invocation
+            String invokeUri = String.format(this.IS_IMPLEMENTED_URI, accountId, event);
+            UriComponents uriComponents = UriComponentsBuilder.newInstance()
+                    .scheme(PROTOCOL)
+                    .host(this.getGatewayDomain(accountId))
+                    .pathSegment(invokeUri)
+                    .queryParam(QUERY_PARAM_USERID, externalSystem)
+                    .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
+
+            String url = uriComponents.toUriString();
+
+            // Generate the oAuth authorization header
+            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.GET, url);
+
+            // Execute the lambda invocation
+            String response = restClient.get(url, this.setHeaders(authHeader));
+
+            // Parse and return is implemented status
+            return objectMapper.readValue(response, FaaSEventImplemented.class).getImplemented();
         } catch(Exception e ){
             throw new FaaSException("Error occured during lambda invocation", e);
         }

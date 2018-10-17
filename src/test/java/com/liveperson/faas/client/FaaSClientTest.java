@@ -1,6 +1,5 @@
 package com.liveperson.faas.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liveperson.csds.client.CsdsWebClient;
 import com.liveperson.faas.dto.FaaSInvocation;
@@ -11,7 +10,6 @@ import com.liveperson.faas.security.OAuthSignaturBuilder;
 import com.liveperson.faas.util.EventResponse;
 import com.liveperson.faas.util.UUIDResponse;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -54,13 +52,18 @@ public class FaaSClientTest {
     private String lambdaUUID = "81ec57ed-b353-4c71-8543-423364db169d";
     private String gatewayUrl = "192.168.21.129:8080";
 
-    private String getExpectedUUIDUrl() {
+    private String getExpectedInvokeUUIDUrl() {
         String expectedUrl = "https://%s/api/account/%s/lambdas/%s/invoke?userId=%s&v=%s";
         return String.format(expectedUrl, gatewayUrl, accountId, lambdaUUID, externalSystem, apiVersion);
     }
 
-    private String getExpectedEventUrl() {
+    private String getExpectedInvokeEventUrl() {
         String expectedUrl = "https://%s/api/account/%s/events/%s/invoke?userId=%s&v=%s";
+        return String.format(expectedUrl, gatewayUrl, accountId, event, externalSystem, apiVersion);
+    }
+
+    private String getExpectedIsImplementedUrl() {
+        String expectedUrl = "https://%s/api/account/%s/events/%s/isImplemented?userId=%s&v=%s";
         return String.format(expectedUrl, gatewayUrl, accountId, event, externalSystem, apiVersion);
     }
 
@@ -85,7 +88,7 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
 
         //Create faas client instance
         FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
@@ -121,7 +124,7 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
 
         //Create faas client instance
         FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
@@ -159,7 +162,7 @@ public class FaaSClientTest {
         long timestamp = System.currentTimeMillis();
 
         //Set method mocks for mock objects
-        when(restClientMock.post(eq(getExpectedUUIDUrl()), httpHeaderCaptor.capture(),
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
                 httpBodyCaptor.capture())).thenReturn("{\"key\":\"responseKey\",\"value\":\"responseValue\"}");
 
         //Create faas client instance
@@ -216,7 +219,7 @@ public class FaaSClientTest {
                 "  }\n" +
                 "]";
 
-        when(restClientMock.post(eq(getExpectedEventUrl()), httpHeaderCaptor.capture(),
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
                 httpBodyCaptor.capture())).thenReturn(mockResponse);
 
         //Create faas client instance
@@ -263,7 +266,7 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedEventUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
                 .thenThrow(new IOException("Error during rest call."));
 
         //Create faas client instance
@@ -280,7 +283,7 @@ public class FaaSClientTest {
     }
 
     @Test(expected = FaaSException.class)
-    public void throwFaaSExceptionAtHttpError() throws Exception{
+    public void throwFaaSExceptionAtHttpErrorForUUIDInvoke() throws Exception{
         //#############
         //# Prepare
         //#############
@@ -289,7 +292,7 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
                 .thenThrow(new IOException("Error during rest call."));
 
         //Create faas client instance
@@ -306,7 +309,7 @@ public class FaaSClientTest {
     }
 
     @Test(expected = FaaSException.class)
-    public void throwFaaSExceptionAtOtherError() throws Exception{
+    public void throwFaaSExceptionAtOtherErrorForUUIDInvoke() throws Exception{
         //#############
         //# Prepare
         //#############
@@ -315,7 +318,7 @@ public class FaaSClientTest {
 
         //Set method mocks for mock objects
         //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
                 .thenThrow(NullPointerException.class);
 
         //Create faas client instance
@@ -329,6 +332,50 @@ public class FaaSClientTest {
         //# Execute
         //#############
         client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
+    }
+
+    @Test
+    public void checkIfEventIsImplementedTest() throws Exception {
+        //#############
+        //# Prepare
+        //#############
+
+        //Set method mocks for mock objects
+        //Mock the isImplemented call
+        when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture())).thenReturn("{\"implemented\": true}");
+
+        //Create faas client instance
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+
+        //#############
+        //# Execute
+        //#############
+        boolean isImplemented = client.isImplemented(externalSystem, accountId, event);
+
+        //#############
+        //# Verify
+        //#############
+        assertTrue("Lambda should be implemented", isImplemented);
+    }
+
+    @Test(expected = FaaSException.class)
+    public void throwFaaSExceptionAtIsImplemented() throws Exception {
+        //#############
+        //# Prepare
+        //#############
+
+        //Set method mocks for mock objects
+        //Raise exception during call
+        when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture()))
+                .thenThrow(new IOException("Error during rest call."));
+
+        //Create faas client instance
+        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+
+        //#############
+        //# Execute
+        //#############
+        boolean isImplemented = client.isImplemented(externalSystem, accountId, event);
     }
 
     @Test

@@ -33,4 +33,15 @@ public interface FaaSClient {
      * @throws FaaSException
      */
     public <T> T invoke(String externalSystem, String accountId, FaaSEvent event, FaaSInvocation data, Class<T> responseType) throws FaaSException;
+
+
+    /**
+     * Checking if lambda implementation exist for a given event
+     * @param externalSystem the name of the external system doing the invocation
+     * @param accountId the brand/account id
+     * @param event the faas event
+     * @return boolean
+     * @throws FaaSException
+     */
+    public boolean isImplemented(String externalSystem, String accountId, FaaSEvent event) throws FaaSException;
 }
