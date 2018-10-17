@@ -19,4 +19,13 @@ public interface RestClient {
      * @throws IOException
      */
     public String post(String url, Map<String, String> headers, String jsonBody) throws IOException;
+
+    /**
+     * Execute a http get call
+     * @param url the url to the API endpoint
+     * @param headers the headers values map
+     * @return response body as string
+     * @throws IOException
+     */
+    public String get(String url, Map<String, String> headers) throws IOException;
 }

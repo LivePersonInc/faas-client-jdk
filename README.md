@@ -1,5 +1,10 @@
-# faas-client
-FaaS client for invoking lambdas via the eventsource gateway (a.k.a Asgard)
+# FaaS-Client (Java)
+In order to invoke a lambda that has been deployed via FaaS, this Java based FaaS-Client can be used.
+The client is taking a POJO within the invoke method and hands it over to the eventsouce gateway api (a.k.a Asgard).
+
+For details about the FaaS architecture and invoke API have a look at:
+* Architecture overview: https://docs.dev.lprnd.net/display/MPE/Architecture+Overview
+* Swagger API doc of eventsource gateway: https://va-a.faasgw.liveperson.net/evg/api-docs/
 
 ## Preparing data for invocation
 ```java
@@ -61,8 +66,14 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 try {
     //Initialize FaaS client with the CSDSDomain
     FaaSClient client = FaaSWebClient.getInstance(csdsDomain, apiKey, apiSecret);
+    
+    //Check if lambdas are implemented for event
+    boolean isImplemented = client.isImplemented(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript);
 
-    Response[] result = client.invoke(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class);
+    if(isImplemented){
+        //Invoke lambdas for event
+        Response[] result = client.invoke(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class);
+    }
     ...
 
 } catch (FaaSException e) {...}
