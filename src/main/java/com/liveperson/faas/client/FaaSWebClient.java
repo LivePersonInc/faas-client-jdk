@@ -35,7 +35,7 @@ public class FaaSWebClient implements FaaSClient {
 
     private static final String PROTOCOL = "https";
     private static final int DEFAULT_PORT = 443;
-    private static final String QUERY_PARAM_USERID = "userId";
+    private static final String QUERY_PARAM_EXTERNAL_SYSTEM = "externalSystem";
     private static final String QUERY_PARAM_APIVERSION = "v";
     private static final String API_VERSION = "1";
     private static final String INVOKE_UUID_URI = "api/account/%s/lambdas/%s/invoke";
@@ -124,7 +124,7 @@ public class FaaSWebClient implements FaaSClient {
                     .scheme(PROTOCOL)
                     .host(this.getGatewayDomain(accountId))
                     .pathSegment(invokeUri)
-                    .queryParam(QUERY_PARAM_USERID, externalSystem)
+                    .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
                     .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
 
 
@@ -151,7 +151,7 @@ public class FaaSWebClient implements FaaSClient {
                     .scheme(PROTOCOL)
                     .host(this.getGatewayDomain(accountId))
                     .pathSegment(invokeUri)
-                    .queryParam(QUERY_PARAM_USERID, externalSystem)
+                    .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
                     .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
 
 
@@ -178,7 +178,7 @@ public class FaaSWebClient implements FaaSClient {
                     .scheme(PROTOCOL)
                     .host(this.getGatewayDomain(accountId))
                     .pathSegment(invokeUri)
-                    .queryParam(QUERY_PARAM_USERID, externalSystem)
+                    .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
                     .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
 
             String url = uriComponents.toUriString();
