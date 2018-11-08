@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.liveperson.maven</groupId>
         <artifactId>liveperson-parent</artifactId>
-        <version>4.0.16</version>
+        <version>4.1.24</version>
     </parent>
 
     <groupId>com.liveperson.faas</groupId>
