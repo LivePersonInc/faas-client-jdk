@@ -1,8 +1,11 @@
 package com.liveperson.faas.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.response.lambda.LambdaResponse;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * FaaS client for invoking lambdas of a account/brand
@@ -44,4 +47,14 @@ public interface FaaSClient {
      * @throws FaaSException
      */
     public boolean isImplemented(String externalSystem, String accountId, FaaSEvent event) throws FaaSException;
+
+    /**
+     * Get a list of lambdas. Filters can be applied by state, eventId or name. EventId & name supports substring.
+     * @param accountId brand/site/account id
+     * @param userId LE user id
+     * @param optionalQueryParams optional query params that are used for filtering - supported params: state, eventId, name
+     * @return A list of lambdas that belong that the above account filtered by the optionalQueryParams
+     * @throws FaaSException
+     */
+    List<LambdaResponse> getLambdasOfAccount(String accountId, String userId, Map<String, String> optionalQueryParams) throws FaaSException;
 }

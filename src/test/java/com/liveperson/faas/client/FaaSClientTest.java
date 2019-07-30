@@ -1,10 +1,14 @@
 package com.liveperson.faas.client;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.liveperson.csds.api.BaseURIData;
 import com.liveperson.csds.client.CsdsWebClient;
+import com.liveperson.csds.client.api.CsdsClient;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.FaaSException;
 import com.liveperson.faas.http.RestClient;
+import com.liveperson.faas.response.lambda.LambdaResponse;
 import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
 import com.liveperson.faas.security.OAuthSignaturBuilder;
 import com.liveperson.faas.util.EventResponse;
@@ -16,7 +20,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.springframework.http.ResponseEntity;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -29,10 +32,10 @@ import static org.junit.Assert.*;
 public class FaaSClientTest {
 
     @Mock
-    ResponseEntity<String> responseEntityMock;
+    RestClient restClientMock;
 
     @Mock
-    RestClient restClientMock;
+    CsdsClient csdsClientMock;
 
     @Captor
     ArgumentCaptor<Map<String, String>> httpHeaderCaptor;
@@ -42,29 +45,36 @@ public class FaaSClientTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SimpleDateFormat mockDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    private final String apiKey = "a6e8ddd8995344cb8a8373a060958e7a";
-    private final String apiSecret = "a13d4dee1f7ab6e0";
+    private final String apiKey = "dummyKey";
+    private final String apiSecret = "dummySecret";
     private final OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(apiKey, apiSecret);
     private String apiVersion = "1";
     private String externalSystem = "test_system";
-    private String accountId = "le49829325";
-    private FaaSEvent event = FaaSEvent.DenverPostSurveyEmailTranscript;
+    private String accountId = "11111111";
+    private String userId = "0051393312";
+    private FaaSEvent event = FaaSEvent.ChatPostSurveyEmailTranscript;
     private String lambdaUUID = "81ec57ed-b353-4c71-8543-423364db169d";
-    private String gatewayUrl = "192.168.21.129:8080";
+    private String faasEVGUrl = "faasGW.com";
+    private String faasGWUrl = "faasUI.com";
 
     private String getExpectedInvokeUUIDUrl() {
         String expectedUrl = "https://%s/api/account/%s/lambdas/%s/invoke?externalSystem=%s&v=%s";
-        return String.format(expectedUrl, gatewayUrl, accountId, lambdaUUID, externalSystem, apiVersion);
+        return String.format(expectedUrl, faasEVGUrl, accountId, lambdaUUID, externalSystem, apiVersion);
     }
 
     private String getExpectedInvokeEventUrl() {
         String expectedUrl = "https://%s/api/account/%s/events/%s/invoke?externalSystem=%s&v=%s";
-        return String.format(expectedUrl, gatewayUrl, accountId, event, externalSystem, apiVersion);
+        return String.format(expectedUrl, faasEVGUrl, accountId, event, externalSystem, apiVersion);
     }
 
     private String getExpectedIsImplementedUrl() {
         String expectedUrl = "https://%s/api/account/%s/events/%s/isImplemented?externalSystem=%s&v=%s";
-        return String.format(expectedUrl, gatewayUrl, accountId, event, externalSystem, apiVersion);
+        return String.format(expectedUrl, faasEVGUrl, accountId, event, externalSystem, apiVersion);
+    }
+
+    private String getExpectedLambdasOfAnAccountUrl() {
+        String expectedUrl = "https://%s/api/account/%s/lambdas?v=%s&userId=%s";
+        return String.format(expectedUrl, faasGWUrl, accountId, apiVersion, userId);
     }
 
     private String getExpectedRequestBody(long timestamp, String headers, String payload) throws Exception {
@@ -73,8 +83,10 @@ public class FaaSClientTest {
     }
 
     @Before
-    public void before(){
-        this.mockDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    public void before() throws Exception{
+        mockDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        when(csdsClientMock.get(eq(accountId), eq(FaaSWebClient.CSDS_EVG_SERVICE_NAME))).thenReturn(new BaseURIData(FaaSWebClient.CSDS_EVG_SERVICE_NAME, accountId, faasEVGUrl));
+        when(csdsClientMock.get(eq(accountId), eq(FaaSWebClient.CSDS_GW_SERVICE_NAME))).thenReturn(new BaseURIData(FaaSWebClient.CSDS_EVG_SERVICE_NAME, accountId, faasGWUrl));
     }
 
     @Test
@@ -91,7 +103,7 @@ public class FaaSClientTest {
         when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
@@ -127,7 +139,7 @@ public class FaaSClientTest {
         when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, null);
@@ -166,7 +178,7 @@ public class FaaSClientTest {
                 httpBodyCaptor.capture())).thenReturn("{\"key\":\"responseKey\",\"value\":\"responseValue\"}");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<UUIDResponse> invocationData = new FaaSInvocation();
@@ -223,7 +235,7 @@ public class FaaSClientTest {
                 httpBodyCaptor.capture())).thenReturn(mockResponse);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<UUIDResponse> invocationData = new FaaSInvocation();
@@ -236,7 +248,7 @@ public class FaaSClientTest {
         //#############
         //# Execute
         //#############
-        EventResponse[] response = client.invoke(externalSystem, accountId, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, EventResponse[].class);
+        EventResponse[] response = client.invoke(externalSystem, accountId, FaaSEvent.ChatPostSurveyEmailTranscript, invocationData, EventResponse[].class);
 
         //#############
         // # Verify
@@ -256,6 +268,70 @@ public class FaaSClientTest {
         assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(), response[0].toString());
     }
 
+    @Test
+    public void getLambdasOfAnAccountTest() throws Exception {
+        //#############
+        //# Prepare
+        //#############
+
+        //Set method mocks for mock objects
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"6d0372f3-524c-4fe9-a9a4-bf0157c9deac\",\n" +
+                "    \"version\": 1,\n" +
+                "    \"name\": \"Sergey_Test\",\n" +
+                "    \"description\": \"Test\",\n" +
+                "    \"samplePayload\": {\n" +
+                "      \"headers\": [],\n" +
+                "      \"payload\": {}\n" +
+                "    },\n" +
+                "    \"state\": \"Productive\",\n" +
+                "    \"runtime\": {\n" +
+                "      \"uuid\": \"57732DA8-24F3-486B-9582-2F2F8C2AF43D\",\n" +
+                "      \"name\": \"Node.js 10\",\n" +
+                "      \"baseImageName\": \"lp-building-block_snapshot/lp-openfaas-lambda-node-base-image:latest\"\n" +
+                "    },\n" +
+                "    \"createdBy\": \"2851393312\",\n" +
+                "    \"updatedBy\": \"2851393312\",\n" +
+                "    \"createdAt\": \"2019-07-22T20:51:28.000Z\",\n" +
+                "    \"updatedAt\": \"2019-07-22T21:02:33.000Z\",\n" +
+                "    \"lastDeployment\": {\n" +
+                "      \"uuid\": \"31B65DAA-A5E7-4B73-BC9F-C30F1380571D\",\n" +
+                "      \"name\": \"stoic_hopper6\",\n" +
+                "      \"lambdaUUID\": \"6d0372f3-524c-4fe9-a9a4-bf0157c9deac\",\n" +
+                "      \"lambdaVersion\": 1,\n" +
+                "      \"createdAt\": \"2019-07-22T20:51:28.000Z\",\n" +
+                "      \"deployedAt\": \"2019-07-22T21:02:33.000Z\",\n" +
+                "      \"createdBy\": \"2851393312\",\n" +
+                "      \"imageName\": \"lpcr.int.liveperson.net/faas/lp-tlv-6d0372f3-524c-4fe9-a9a4-bf0157c9deac:1\",\n" +
+                "      \"deploymentState\": \"Deploy Finish\"\n" +
+                "    },\n" +
+                "    \"implementation\": {\n" +
+                "      \"code\": \"function lambda(input, callback) {\\n    callback(null, `Hello World`);\\n}\",\n" +
+                "      \"dependencies\": [],\n" +
+                "      \"environmentVariables\": []\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+
+        when(restClientMock.get(eq(getExpectedLambdasOfAnAccountUrl()), httpHeaderCaptor.capture()))
+                .thenReturn(mockResponse);
+
+        //Create faas client instance
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
+
+        //#############
+        //# Execute
+        //#############
+        List<LambdaResponse> actualResponse = client.getLambdasOfAccount(accountId, userId, new HashMap<String, String>());
+
+        //#############
+        // # Verify
+        //#############
+        List<LambdaResponse> expectedResponse = objectMapper.readValue(mockResponse, new TypeReference<List<LambdaResponse>>() { });
+        assertEquals(expectedResponse.get(0), actualResponse.get(0));
+    }
+
     @Test(expected = FaaSException.class)
     public void throwFaaSExceptionAtHttpErrorForEventInvoke() throws Exception{
         //#############
@@ -270,7 +346,7 @@ public class FaaSClientTest {
                 .thenThrow(new IOException("Error during rest call."));
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -296,7 +372,7 @@ public class FaaSClientTest {
                 .thenThrow(new IOException("Error during rest call."));
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -322,7 +398,7 @@ public class FaaSClientTest {
                 .thenThrow(NullPointerException.class);
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //Create invocation data object
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
@@ -345,7 +421,7 @@ public class FaaSClientTest {
         when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture())).thenReturn("{\"implemented\": true}");
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //#############
         //# Execute
@@ -370,7 +446,7 @@ public class FaaSClientTest {
                 .thenThrow(new IOException("Error during rest call."));
 
         //Create faas client instance
-        FaaSClient client = new FaaSWebClient(gatewayUrl, restClientMock, oAuthSignaturBuilder);
+        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
 
         //#############
         //# Execute
@@ -381,11 +457,6 @@ public class FaaSClientTest {
     @Test
     public void getInstanceViaCSDSDomain() throws Exception {
         FaaSWebClient.getInstance("192.168.21.129:8080", apiKey, apiSecret);
-    }
-
-    @Test
-    public void getInstanceViaHostPort() throws Exception {
-        FaaSWebClient.getInstance("localhost", 9902, apiKey, apiSecret);
     }
 
     @Test

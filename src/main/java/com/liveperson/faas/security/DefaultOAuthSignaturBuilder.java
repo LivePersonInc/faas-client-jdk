@@ -33,9 +33,6 @@ public class DefaultOAuthSignaturBuilder implements OAuthSignaturBuilder{
     // Message Authentication Code (MAC) object
     private Mac mac;
 
-    // oAuth parameters need to be alphabetical sorted!!!
-    private SortedMap<String, String> oAuthParameters;
-
     /**
      * Constructor
      * @param consumerKey the API key granted
@@ -44,7 +41,6 @@ public class DefaultOAuthSignaturBuilder implements OAuthSignaturBuilder{
     public DefaultOAuthSignaturBuilder(String consumerKey, String consumerSecret) {
         this.consumerKey = consumerKey;
         this.consumerSecret = consumerSecret;
-        this.oAuthParameters = new TreeMap<>();
 
         // Initialize mac
         String signingKey = encodeURL(consumerSecret) + "&";
@@ -63,8 +59,10 @@ public class DefaultOAuthSignaturBuilder implements OAuthSignaturBuilder{
         String oauthNonce = getOauthNonce();
         String oauthTimestamp = String.valueOf(System.currentTimeMillis());
 
+        // oAuth parameters need to be alphabetical sorted!!!
+        SortedMap<String, String> oAuthParameters = new TreeMap<>();
         // Set query parameters to oauth parameters
-        processQueryParameters(url);
+        processQueryParameters(url, oAuthParameters);
 
         // Add further oAuth parameters
         oAuthParameters.put(OAUTH_CONSUMER_KEY, consumerKeyValue);
@@ -142,7 +140,7 @@ public class DefaultOAuthSignaturBuilder implements OAuthSignaturBuilder{
      * Extract the query parameters from the url and store them in the oAuth parameters
      * @param url the url containing the query params
      */
-    private void processQueryParameters(String url){
+    private void processQueryParameters(String url, SortedMap<String, String> oAuthParameters){
         UriComponents builder = UriComponentsBuilder.fromUriString(url).build();
         MultiValueMap<String, String> parameters = builder.getQueryParams();
         Set<String> keys = parameters.keySet();
