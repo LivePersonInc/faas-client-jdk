@@ -25,6 +25,12 @@
             <email>faas-lp@liveperson.com</email>
         </developer>
     </developers>
+    
+    <licenses>
+      <license>
+        <name>MIT</name>
+      </license>
+    </licenses>
 
     <scm>
         <connection>scm:git:https://ci_user@lpgithub.dev.lprnd.net/RnD-Mannheim/faas-client.git</connection>
