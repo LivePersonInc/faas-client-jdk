@@ -2,43 +2,49 @@ package com.liveperson.faas.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liveperson.csds.api.BaseURIData;
-import com.liveperson.csds.client.CsdsWebClient;
-import com.liveperson.csds.client.api.CsdsClient;
-import com.liveperson.csds.client.api.CsdsWebClientConfig;
-import com.liveperson.faas.dto.FaaSEventImplemented;
+import com.liveperson.faas.client.types.FaaSEventImplementedExpiry;
+import com.liveperson.faas.client.types.OptionalParams;
+import com.liveperson.faas.csds.CsdsClient;
+import com.liveperson.faas.csds.CsdsMapClient;
+import com.liveperson.faas.csds.CsdsWebClient;
+import com.liveperson.faas.dto.FaaSError;
 import com.liveperson.faas.dto.FaaSInvocation;
-import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.DefaultRestClient;
 import com.liveperson.faas.http.RestClient;
+import com.liveperson.faas.metriccollector.MetricCollector;
+import com.liveperson.faas.metriccollector.NullMetricCollector;
 import com.liveperson.faas.response.lambda.LambdaResponse;
-import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
-import com.liveperson.faas.security.OAuthSignaturBuilder;
+import com.liveperson.faas.security.AuthSignatureBuilder;
+import com.liveperson.faas.security.JwtSignatureBuilder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StopWatch;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * FaaS web client for invoking lambdas of a account/brand
  * over the eventsource gateway / asgard
  *
+ * @author sschwarz
  * @author arotaru
  */
 public class FaaSWebClient implements FaaSClient {
 
-    public static final String CSDS_EVG_SERVICE_NAME = "faasGW";
-    public static final String CSDS_GW_SERVICE_NAME = "faasUI";
-    private static final String CSDS_DISK_STORAGE_PATH = "/tmp/";
-
-    private static final int REST_CLIENT_CONNECTION_TIMOUT = 5000; //5 sec
-    private static final int REST_CLIENT_READ_TIMOUT = 10000; //10 sec
-
+    public static final String CSDS_GW_SERVICE_NAME = "faasGW";
+    public static final String CSDS_UI_SERVICE_NAME = "faasUI";
+    public static final String QUERY_PARAM_STATE = "state";
+    public static final String QUERY_PARAM_EVENT_ID = "eventId";
+    public static final String QUERY_PARAM_NAME = "name";
     private static final String PROTOCOL = "https";
     private static final String QUERY_PARAM_EXTERNAL_SYSTEM = "externalSystem";
     private static final String QUERY_PARAM_APIVERSION = "v";
@@ -48,235 +54,447 @@ public class FaaSWebClient implements FaaSClient {
     private static final String INVOKE_EVENT_URI = "api/account/%s/events/%s/invoke";
     private static final String IS_IMPLEMENTED_URI = "api/account/%s/events/%s/isImplemented";
     private static final String GET_LAMBDAS_URI = "api/account/%s/lambdas";
-
-    public static final String QUERY_PARAM_STATE = "state";
-    public static final String QUERY_PARAM_EVENT_ID = "eventId";
-    public static final String QUERY_PARAM_NAME = "name";
-
+    private static final String REQUEST_LOG_INVOKE = "Invocation with requestID %s will be carried out for accountID " +
+            "%s with " +
+            "url %s and requestBody %s";
+    private static final String REQUEST_LOG_IS_IMPLEMENTED = "Is Implemented request with requestID %s will be " +
+            "carried out for accountId %s with url %s";
+    private static final String REQUEST_LOG_GET_LAMBDAS = "Get Lambdas request with requestID %s will be " +
+            "carried out for accountId %s with url %s";
+    private static final String REQUEST_REST_EXCEPTION_LOG = "Rest exception occurred for request to url %s with " +
+            "requestID %s" +
+            " and " +
+            "accountID %s. Status code was %s with error message %s";
+    private static final String REQUEST_EXCEPTION_LOG = "Exception occurred for request to url %s with requestID" +
+            " %s" +
+            " and " +
+            "accountID %s. Error message was %s";
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
+    static Logger logger = LogManager.getLogger();
     private CsdsClient csdsClient;
     private RestClient restClient;
-    private OAuthSignaturBuilder oAuthSignaturBuilder;
+    private AuthSignatureBuilder authSignatureBuilder;
+    private MetricCollector metricCollector;
+    private String accountId;
+    private IsImplementedCache isImplementedCache;
 
-    /**
-     * Factory method to create a instance of the FaaSClient
-     * @param csdsDomain the domain of the csds server
-     * @param consumerKey the API key granted
-     * @param consumerSecret the API secret granted
-     * @return faas client instance
-     * @throws FaaSException
-     */
-    public static FaaSClient getInstance(String csdsDomain, String consumerKey, String consumerSecret) throws FaaSException{
-        RestClient restClient = new DefaultRestClient(REST_CLIENT_READ_TIMOUT, REST_CLIENT_CONNECTION_TIMOUT);
-        OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
-        return new FaaSWebClient(FaaSWebClient.getCsdsClient(csdsDomain), restClient, oAuthSignaturBuilder);
+    private FaaSWebClient() {
     }
 
-    /**
-     * Factory method to create a instance of the FaaSClient
-     * @param csdsClient the csds client instance
-     * @param consumerKey the API key granted
-     * @param consumerSecret the API secret granted
-     * @return faas client instance
-     * @throws FaaSException
-     */
-    public static FaaSClient getInstance(CsdsClient csdsClient, String consumerKey, String consumerSecret) throws FaaSException{
-        RestClient restClient = new DefaultRestClient(REST_CLIENT_READ_TIMOUT, REST_CLIENT_CONNECTION_TIMOUT);
-        OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(consumerKey, consumerSecret);
-        return new FaaSWebClient(csdsClient, restClient, oAuthSignaturBuilder);
-    }
-
-    /**
-     * Constructor for invocation via CSDS domain resolution of Eventsource Gatewaay
-     * @param csdsClient csds client used to the csds resolution
-     * @param restClient the rest client instance
-     * @throws FaaSException
-     */
-    public FaaSWebClient(CsdsClient csdsClient, RestClient restClient, OAuthSignaturBuilder oAuthSignaturBuilder) throws FaaSException {
-        this.csdsClient = csdsClient;
-        this.restClient = restClient;
-        this.oAuthSignaturBuilder = oAuthSignaturBuilder;
-    }
-
-    public <T> T invoke(String externalSystem, String accountId, String lambdaUUID, FaaSInvocation data, Class<T> responseType) throws FaaSException {
-        try {
-            // Create the complete url for invocation
-            String invokeUri = String.format(this.INVOKE_UUID_URI, accountId, lambdaUUID);
-            UriComponents uriComponents = UriComponentsBuilder.newInstance()
-                    .scheme(PROTOCOL)
-                    .host(this.getEVGDomain(accountId))
-                    .pathSegment(invokeUri)
-                    .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
-                    .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
-
-
-            String url = uriComponents.toUriString();
-
-            // Generate the oAuth authorization header
-            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.POST, url);
-
-            // Execute the lambda invocation
-            String response = restClient.post(url, this.setHeaders(authHeader), data.toString());
-
-            // Parse and return lambda result
-            return objectMapper.readValue(response, responseType);
-        } catch(Exception e ){
-            throw new FaaSException("Error occured during lambda invocation", e);
+    private static void updateQueryParams(String key, Map<String, String> newQueryParamsMap,
+                                          UriComponentsBuilder uriComponentsBuilder) {
+        String value = newQueryParamsMap.get(key);
+        if (value != null) {
+            uriComponentsBuilder.queryParam(key, value);
         }
     }
 
-    public <T> T invoke(String externalSystem, String accountId, FaaSEvent event, FaaSInvocation data, Class<T> responseType) throws FaaSException {
-        try {
-            // Create the complete url for invocation
-            String invokeUri = String.format(this.INVOKE_EVENT_URI, accountId, event);
-            UriComponents uriComponents = UriComponentsBuilder.newInstance()
-                    .scheme(PROTOCOL)
-                    .host(this.getEVGDomain(accountId))
-                    .pathSegment(invokeUri)
-                    .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
-                    .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
-
-
-            String url = uriComponents.toUriString();
-
-            // Generate the oAuth authorization header
-            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.POST, url);
-
-            // Execute the lambda invocation
-            String response = restClient.post(url, this.setHeaders(authHeader), data.toString());
-
-            // Parse and return lambda result
-            return objectMapper.readValue(response, responseType);
-        } catch(Exception e ){
-            throw new FaaSException("Error occured during lambda invocation", e);
-        }
+    @Override
+    public <T> T invokeByUUID(String externalSystem, String lambdaUUID, FaaSInvocation data, Class<T> responseType,
+                              OptionalParams optionalParams) throws FaaSException {
+        String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, lambdaUUID);
+        return invokeWithUri(externalSystem, data, responseType, invokeUri, optionalParams);
     }
 
-    public boolean isImplemented(String externalSystem, String accountId, FaaSEvent event) throws FaaSException {
+    @Override
+    public void invokeByUUID(String externalSystem, String lambdaUUID, FaaSInvocation data,
+                             OptionalParams optionalParams) throws FaaSException {
+        String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, lambdaUUID);
+        invokeWithUriNoResponse(externalSystem, data, invokeUri, optionalParams);
+
+    }
+
+    @Override
+    public <T> T invokeByEvent(String externalSystem, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
+                               OptionalParams optionalParams) throws FaaSException {
+        String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        return invokeWithUri(externalSystem, data, responseType, invokeUri, optionalParams);
+    }
+
+    @Override
+    public <T> T invokeByEvent(String externalSystem, String event, FaaSInvocation data, Class<T> responseType,
+                               OptionalParams optionalParams) throws FaaSException {
+        String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        return invokeWithUri(externalSystem, data, responseType, invokeUri, optionalParams);
+    }
+
+    @Override
+    public void invokeByEvent(String externalSystem, FaaSEvent event, FaaSInvocation data,
+                              OptionalParams optionalParams) throws FaaSException {
+        String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        invokeWithUriNoResponse(externalSystem, data, invokeUri, optionalParams);
+    }
+
+    @Override
+    public void invokeByEvent(String externalSystem, String event, FaaSInvocation data,
+                              OptionalParams optionalParams) throws FaaSException {
+        String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        invokeWithUriNoResponse(externalSystem, data, invokeUri, optionalParams);
+    }
+
+    public boolean isImplemented(String externalSystem, FaaSEvent event, OptionalParams optionalParams) throws FaaSException {
+        String eventId = event.toString();
+        return isEventImplemented(externalSystem, eventId, optionalParams);
+    }
+
+    @Override
+    public boolean isImplemented(String externalSystem, String event, OptionalParams optionalParams) throws FaaSException {
+        return isEventImplemented(externalSystem, event, optionalParams);
+    }
+
+    private boolean isEventImplemented(String externalSystem, String event, OptionalParams optionalParams) throws FaaSException {
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString() :
+                optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        FaaSEventImplementedExpiry eventExpiry = isImplementedCache.getIfCachedAndValid(event);
+        String url = "unresolved";
+        if (eventExpiry != null) {
+            return eventExpiry.isImplemented();
+        }
         try {
-            // Create the complete url for invocation
-            String invokeUri = String.format(this.IS_IMPLEMENTED_URI, accountId, event);
-            UriComponents uriComponents = UriComponentsBuilder.newInstance()
-                    .scheme(PROTOCOL)
-                    .host(this.getEVGDomain(accountId))
-                    .pathSegment(invokeUri)
-                    .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
-                    .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
+            String invokeUri = String.format(IS_IMPLEMENTED_URI, accountId, event);
+            url = buildGWDomainUrl(externalSystem, invokeUri);
+            logger.info(String.format(REQUEST_LOG_IS_IMPLEMENTED, requestId, accountId, url));
+            String authHeader = authSignatureBuilder.getAuthHeader();
+            String response = restClient.get(url, this.setHeaders(authHeader, requestId), timeOutInMs);
 
-            String url = uriComponents.toUriString();
+            boolean isImplemented = objectMapper.readValue(response,
+                    com.liveperson.faas.dto.FaaSEventImplemented.class).getImplemented();
+            isImplementedCache.update(event, isImplemented);
+            stopWatch.stop();
+            metricCollector.onIsImplementedSuccess(externalSystem, stopWatch.getTotalTimeSeconds(), event,
+                    accountId);
 
-            // Generate the oAuth authorization header
-            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.GET, url);
-
-            // Execute the lambda invocation
-            String response = restClient.get(url, this.setHeaders(authHeader));
-
-            // Parse and return is implemented status
-            return objectMapper.readValue(response, FaaSEventImplemented.class).getImplemented();
-        } catch(Exception e ){
+            return isImplemented;
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            FaaSError faaSError = getFaaSError(e);
+            collectMetricsIsImplementedFails(externalSystem, event, stopWatch, e,
+                    e.getStatusCode());
+            throw new FaaSDetailedException(faaSError, e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsIsImplementedFails(externalSystem, event, stopWatch, e, -1);
             throw new FaaSException("Error occured during check if lambda is implemented.", e);
         }
     }
 
-    public List<LambdaResponse> getLambdasOfAccount(String accountId, String userId, Map<String, String> optionalQueryParams) throws FaaSException {
+    private void collectMetricsIsImplementedFails(String externalSystem, String eventId, StopWatch stopWatch,
+                                                  Exception e, int statusCode) {
+        if (stopWatch.isRunning()) stopWatch.stop();
+        metricCollector.onIsImplementedFailure(externalSystem, stopWatch.getTotalTimeSeconds(), eventId, accountId,
+                statusCode, e);
+    }
+
+    public List<LambdaResponse> getLambdas(String userId, Map<String, String> optionalQueryParams,
+                                           OptionalParams optionalParams) throws FaaSException {
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString() :
+                optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        String url = "unresolved";
         try {
-            // Create the complete url for invocation
             String getLambdasUri = String.format(GET_LAMBDAS_URI, accountId);
-            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.newInstance()
-                    .scheme(PROTOCOL)
-                    .host(getGWDomain(accountId))
-                    .pathSegment(getLambdasUri)
-                    .queryParam(QUERY_PARAM_APIVERSION, API_VERSION)
-                    .queryParam(QUERY_PARAM_USER_ID, userId);
-
-            if(!CollectionUtils.isEmpty(optionalQueryParams)) {
-                updateQueryParams(QUERY_PARAM_STATE, optionalQueryParams, uriComponentsBuilder);
-                updateQueryParams(QUERY_PARAM_EVENT_ID, optionalQueryParams, uriComponentsBuilder);
-                updateQueryParams(QUERY_PARAM_NAME, optionalQueryParams, uriComponentsBuilder);
-            }
-
-            String url = uriComponentsBuilder.build().toUriString();
-
-            // Generate the oAuth authorization header
-            String authHeader = oAuthSignaturBuilder.getAuthHeader(HttpMethod.GET, url);
-
-            // Get lambdas
-            String response = restClient.get(url, setHeaders(authHeader));
-
-            // Parse and return lambda result
-            return objectMapper.readValue(response, new TypeReference<List<LambdaResponse>>() { });
-        } catch(Exception e ){
+            url = buildUIDomainUrl(userId, optionalQueryParams, getLambdasUri);
+            // TODO: Needs Oauth1 still!
+            String authHeader = authSignatureBuilder.getAuthHeader();
+            logger.info(String.format(REQUEST_LOG_GET_LAMBDAS, requestId, accountId, url));
+            String response = restClient.get(url, setHeaders(authHeader, requestId), timeOutInMs);
+            stopWatch.stop();
+            metricCollector.onGetLambdasSuccess(userId, stopWatch.getTotalTimeSeconds(), accountId);
+            return objectMapper.readValue(response, new TypeReference<List<LambdaResponse>>() {
+            });
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            collectMetricsGetLambdasFails(userId, stopWatch, e.getStatusCode(), e);
+            FaaSError faaSError = this.getFaaSError(e);
+            throw new FaaSDetailedException(faaSError, e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsGetLambdasFails(userId, stopWatch, -1, e);
             throw new FaaSException("Error occurred during lambdas fetch for account: " + accountId, e);
         }
     }
 
-    /**
-     * Initialize the CSDS client
-     * @param csdsDomain the relevant csds domain
-     * @return the csds client instance
-     * @throws FaaSException
-     */
-    private static CsdsClient getCsdsClient(String csdsDomain) throws FaaSException {
+    private void collectMetricsGetLambdasFails(String userId, StopWatch stopWatch, int statusCode, Exception e) {
+        if (stopWatch.isRunning()) stopWatch.stop();
+        metricCollector.onGetLambdasFailure(userId, stopWatch.getTotalTimeSeconds(), accountId, statusCode, e);
+    }
+
+    private <T> T invokeWithUri(String externalSystem, FaaSInvocation data,
+                                Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString() :
+                optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        boolean isLambda = true;
+        String lambdaOrEventName = "";
+        String url = "unresolved";
         try {
-            CsdsWebClient csdsClient = CsdsWebClient.getInstance();
-            if (!csdsClient.isClientInitialized()) {
-                CsdsWebClientConfig config = new CsdsWebClientConfig(csdsDomain, CSDS_DISK_STORAGE_PATH);
-                csdsClient.init(config);
-            }
-            return csdsClient;
-        } catch(Exception e){
-            throw new FaaSException("Could not get CSDS client for FaaS client", e);
+            isLambda = invokeUri.contains("lambdas");
+            lambdaOrEventName = extractLambdaOrEventName(invokeUri);
+            url = buildGWDomainUrl(externalSystem, invokeUri);
+            String authHeader = authSignatureBuilder.getAuthHeader();
+            logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
+            String response = restClient.post(url, this.setHeaders(authHeader, requestId), data.toString(),
+                    timeOutInMs);
+            collectMetricsForSuccessfulInvocation(externalSystem, stopWatch, isLambda, lambdaOrEventName);
+
+            return objectMapper.readValue(response, responseType);
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            collectMetricsForFailedInvocation(externalSystem, stopWatch, isLambda, lambdaOrEventName, e,
+                    e.getStatusCode());
+            throw handleFaaSInvocationException(e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsForFailedInvocation(externalSystem, stopWatch, isLambda, lambdaOrEventName, e, -1);
+            throw new FaaSException("Error occured during lambda invocation", e);
+        }
+    }
+
+    private String extractLambdaOrEventName(String invokeUri) {
+        String[] invokeUriSplit = invokeUri.split("/");
+        String lambdaOrEventName = invokeUriSplit[invokeUriSplit.length - 2];
+        return lambdaOrEventName;
+    }
+
+    private void invokeWithUriNoResponse(String externalSystem, FaaSInvocation data
+            , String invokeUri, OptionalParams optionalParams) throws FaaSException {
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString() :
+                optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        boolean isLambda = true;
+        String lambdaOrEventName = "";
+        String url = "unresolved";
+        try {
+            isLambda = invokeUri.contains("lambdas");
+            lambdaOrEventName = extractLambdaOrEventName(invokeUri);
+            url = buildGWDomainUrl(externalSystem, invokeUri);
+            String authHeader = authSignatureBuilder.getAuthHeader();
+            logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
+            restClient.post(url, this.setHeaders(authHeader, requestId), data.toString(), timeOutInMs);
+            collectMetricsForSuccessfulInvocation(externalSystem, stopWatch, isLambda, lambdaOrEventName);
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            collectMetricsForFailedInvocation(externalSystem, stopWatch, isLambda, lambdaOrEventName, e,
+                    e.getStatusCode());
+            throw handleFaaSInvocationException(e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsForFailedInvocation(externalSystem, stopWatch, isLambda, lambdaOrEventName, e, -1);
+            throw new FaaSException("Error occured during lambda invocation", e);
+        }
+    }
+
+    private void collectMetricsForSuccessfulInvocation(String externalSystem, StopWatch stopWatch, boolean isLambda,
+                                                       String lambdaOrEventName) {
+        if (stopWatch.isRunning()) stopWatch.stop();
+        if (isLambda)
+            metricCollector.onInvokeByUUIDSuccess(externalSystem, stopWatch.getTotalTimeSeconds(), lambdaOrEventName,
+                    accountId);
+        else
+            metricCollector.onInvokeByEventSuccess(externalSystem, stopWatch.getTotalTimeSeconds(), lambdaOrEventName,
+                    accountId);
+    }
+
+    private void collectMetricsForFailedInvocation(String externalSystem, StopWatch stopWatch, boolean isLambda,
+                                                   String lambdaOrEventName, Exception e, int statusCode) {
+        if (stopWatch.isRunning()) stopWatch.stop();
+        if (isLambda)
+            metricCollector.onInvokeByUUIDFailure(externalSystem, stopWatch.getTotalTimeSeconds(), lambdaOrEventName,
+                    accountId, statusCode, e);
+        else
+            metricCollector.onInvokeByEventFailure(externalSystem, stopWatch.getTotalTimeSeconds(), lambdaOrEventName,
+                    accountId, statusCode, e);
+    }
+
+    private String buildUIDomainUrl(String userId, Map<String, String> optionalQueryParams,
+                                    String getLambdasUri) throws CsdsRetrievalException {
+        UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.newInstance()
+                .scheme(PROTOCOL)
+                .host(getUIDomain())
+                .pathSegment(getLambdasUri)
+                .queryParam(QUERY_PARAM_APIVERSION, API_VERSION)
+                .queryParam(QUERY_PARAM_USER_ID, userId);
+
+        if (!CollectionUtils.isEmpty(optionalQueryParams)) {
+            updateQueryParams(QUERY_PARAM_STATE, optionalQueryParams, uriComponentsBuilder);
+            updateQueryParams(QUERY_PARAM_EVENT_ID, optionalQueryParams, uriComponentsBuilder);
+            updateQueryParams(QUERY_PARAM_NAME, optionalQueryParams, uriComponentsBuilder);
+        }
+
+        return uriComponentsBuilder.build().toUriString();
+    }
+
+    private String buildGWDomainUrl(String externalSystem, String invokeUri) throws Exception {
+        UriComponents uriComponents = UriComponentsBuilder.newInstance()
+                .scheme(PROTOCOL)
+                .host(this.getGWDomain())
+                .pathSegment(invokeUri)
+                .queryParam(QUERY_PARAM_EXTERNAL_SYSTEM, externalSystem)
+                .queryParam(QUERY_PARAM_APIVERSION, API_VERSION).build();
+
+        return uriComponents.toUriString();
+    }
+
+    private FaaSException handleFaaSInvocationException(RestException e) throws FaaSException {
+        FaaSError faaSError = this.getFaaSError(e);
+        if (FaaSLambdaErrorCodes.contains(faaSError.getErrorCode())) throw new FaaSLambdaException(faaSError, e);
+
+        throw new FaaSDetailedException(faaSError, e);
+    }
+
+    private FaaSError getFaaSError(RestException e) throws FaaSException {
+        try {
+            return objectMapper.readValue(e.getResponse(), FaaSError.class);
+        } catch (IOException ex) {
+            throw new FaaSException("Error occured during lambda invocation", ex);
         }
     }
 
     /**
      * Set headers for the RESTful call
+     *
      * @param authorizationHeader the authorization header
      * @return the relevant headers
      */
-    private Map<String, String> setHeaders(String authorizationHeader) {
+    private Map<String, String> setHeaders(String authorizationHeader, String requestId) {
         Map<String, String> headers = new HashMap<String, String>();
+        headers.put("X-REQUEST-ID", requestId);
         headers.put(HttpHeaders.AUTHORIZATION, authorizationHeader);
         return headers;
     }
 
     /**
-     * Determines the eventsource gateway domain for the RESTful call.
-     * This domain is used for invoking functions.
-     * @param accountId the brand/account id
+     * Determines the faas UI domain for the RESTful call.
+     * This domain is used for managing & deploying functions.
+     *
      * @return the base url
-     * @throws Exception
+     * @throws CsdsRetrievalException
      */
-    private String getEVGDomain(String accountId) throws Exception {
-        // Return from dynamic CSDS resolution
-        BaseURIData baseURIData = csdsClient.get(accountId, CSDS_EVG_SERVICE_NAME);
-        if (baseURIData == null) {
-            throw new FaaSException("Could not resolve CSDS entry to faas domain.");
-        }
-        return baseURIData.getBaseURI();
+    private String getUIDomain() throws CsdsRetrievalException {
+        return csdsClient.getDomain(CSDS_UI_SERVICE_NAME);
     }
 
     /**
      * Determines the faas gateway domain for the RESTful call.
-     * This domain is used for managing & deploying functions.
-     * @param accountId the brand/account id
+     * This domain is used for invoking functions.
+     *
      * @return the base url
-     * @throws Exception
+     * @throws CsdsRetrievalException
      */
-    private String getGWDomain(String accountId) throws Exception {
-        // Return from dynamic CSDS resolution
-        BaseURIData baseURIData = csdsClient.get(accountId, CSDS_GW_SERVICE_NAME);
-        if (baseURIData == null) {
-            throw new FaaSException("Could not resolve CSDS entry to faas domain.");
-        }
-        return baseURIData.getBaseURI();
+    private String getGWDomain() throws CsdsRetrievalException {
+        return csdsClient.getDomain(CSDS_GW_SERVICE_NAME);
     }
 
-    private static void updateQueryParams(String key, Map<String, String> newQueryParamsMap, UriComponentsBuilder uriComponentsBuilder){
-        String value = newQueryParamsMap.get(key);
-        if(value != null) {
-            uriComponentsBuilder.queryParam(key, value);
+    public static class Builder {
+        private CsdsClient csdsClient;
+        private Map<String, String> csdsMap;
+        private RestClient restClient;
+        private AuthSignatureBuilder authSignatureBuilder;
+        private MetricCollector metricCollector;
+        private String accountId;
+        private String clientSecret;
+        private String clientId;
+        private IsImplementedCache isImplementedCache;
+
+        public Builder(String accountId) {
+            this.accountId = accountId;
+        }
+
+        public Builder withCsdsClient(CsdsClient csdsClient) {
+            this.csdsClient = csdsClient;
+            return this;
+        }
+
+        public Builder withCsdsMap(Map<String, String> csdsMap) {
+            this.csdsMap = csdsMap;
+            return this;
+        }
+
+        public Builder withIsImplementedCache(IsImplementedCache isImplementedCache) {
+            this.isImplementedCache = isImplementedCache;
+            return this;
+        }
+
+        public Builder withRestClient(RestClient restClient) {
+            this.restClient = restClient;
+            return this;
+        }
+
+        public Builder withAuthSignatureBuilder(AuthSignatureBuilder authSignatureBuilder) {
+            this.authSignatureBuilder = authSignatureBuilder;
+            return this;
+        }
+
+        public Builder withMetricCollector(MetricCollector metricCollector) {
+            this.metricCollector = metricCollector;
+            return this;
+        }
+
+        public Builder withClientSecret(String clientSecret) {
+            this.clientSecret = clientSecret;
+            return this;
+        }
+
+        public Builder withClientId(String clientId) {
+            this.clientId = clientId;
+            return this;
+        }
+
+        private boolean isInitalized(Object o) {
+            return o != null;
+        }
+
+        public FaaSWebClient build() {
+            FaaSWebClient client = new FaaSWebClient();
+            client.accountId = this.accountId;
+            client.restClient = isInitalized(this.restClient) ? this.restClient :
+                    new DefaultRestClient();
+            if (isInitalized(this.metricCollector)) {
+                client.metricCollector = this.metricCollector;
+            } else {
+                client.metricCollector = new NullMetricCollector();
+            }
+
+            if (isInitalized(this.csdsClient)) {
+                client.csdsClient = this.csdsClient;
+            } else if (isInitalized(this.csdsMap)) {
+                client.csdsClient = new CsdsMapClient(this.csdsMap);
+            } else {
+                client.csdsClient = new CsdsWebClient(client.restClient, accountId);
+            }
+
+            if (isInitalized(this.authSignatureBuilder)) {
+                client.authSignatureBuilder = this.authSignatureBuilder;
+            } else if (isInitalized(this.clientSecret) && isInitalized(this.clientId)) {
+                client.authSignatureBuilder = new JwtSignatureBuilder(client.restClient, client.csdsClient, accountId
+                        , this.clientId, this.clientSecret);
+            } else {
+                throw new IllegalStateException("Neither AuthSignatureBuilder instance, nor clientId and clientSecret" +
+                        " were provided, thus impossible to use any authentication method");
+            }
+            if (isInitalized(this.isImplementedCache))
+                client.isImplementedCache = this.isImplementedCache;
+            else {
+                client.isImplementedCache = new DefaultIsImplementedCache(60);
+            }
+            return client;
         }
     }
 }
