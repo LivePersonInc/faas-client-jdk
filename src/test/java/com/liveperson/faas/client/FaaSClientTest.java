@@ -2,15 +2,16 @@ package com.liveperson.faas.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liveperson.csds.api.BaseURIData;
-import com.liveperson.csds.client.CsdsWebClient;
-import com.liveperson.csds.client.api.CsdsClient;
+import com.liveperson.faas.client.types.FaaSEventImplementedExpiry;
+import com.liveperson.faas.client.types.OptionalParams;
+import com.liveperson.faas.csds.CsdsClient;
+import com.liveperson.faas.dto.FaaSError;
 import com.liveperson.faas.dto.FaaSInvocation;
-import com.liveperson.faas.exception.FaaSException;
+import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.RestClient;
+import com.liveperson.faas.metriccollector.MetricCollector;
 import com.liveperson.faas.response.lambda.LambdaResponse;
-import com.liveperson.faas.security.DefaultOAuthSignaturBuilder;
-import com.liveperson.faas.security.OAuthSignaturBuilder;
+import com.liveperson.faas.security.AuthSignatureBuilder;
 import com.liveperson.faas.util.EventResponse;
 import com.liveperson.faas.util.UUIDResponse;
 import org.junit.Before;
@@ -18,208 +19,239 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyMap;
 import static org.mockito.Mockito.*;
-import static org.junit.Assert.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FaaSClientTest {
 
-    @Mock
-    RestClient restClientMock;
-
-    @Mock
-    CsdsClient csdsClientMock;
-
-    @Captor
-    ArgumentCaptor<Map<String, String>> httpHeaderCaptor;
-
-    @Captor
-    ArgumentCaptor<String> httpBodyCaptor;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SimpleDateFormat mockDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    private final String apiKey = "dummyKey";
-    private final String apiSecret = "dummySecret";
-    private final OAuthSignaturBuilder oAuthSignaturBuilder = new DefaultOAuthSignaturBuilder(apiKey, apiSecret);
+    @InjectMocks
+    private FaaSWebClient client;
+    @Mock
+    private RestClient restClientMock;
+    @Mock
+    private CsdsClient csdsClientMock;
+    @Captor
+    private ArgumentCaptor<Map<String, String>> httpHeaderCaptor;
+    @Captor
+    private ArgumentCaptor<String> urlCaptor;
+    @Captor
+    private ArgumentCaptor<String> httpBodyCaptor;
+    private String authHeader = "Bearer authenticate";
+    @Mock
+    private AuthSignatureBuilder authSignatureBuilder;
+    @Mock
+    private MetricCollector metricCollectorMock;
+    @Mock
+    private DefaultIsImplementedCache defaultIsImplementedCacheMock;
+    private String accountId = "11111111";
     private String apiVersion = "1";
     private String externalSystem = "test_system";
-    private String accountId = "11111111";
     private String userId = "0051393312";
     private FaaSEvent event = FaaSEvent.ChatPostSurveyEmailTranscript;
     private String lambdaUUID = "81ec57ed-b353-4c71-8543-423364db169d";
-    private String faasEVGUrl = "faasGW.com";
-    private String faasGWUrl = "faasUI.com";
+    private String faasGWUrl = "faasGW.com";
+    private String faasUIUrl = "faasUI.com";
+    private String requestId = "requestId";
+    private int defaultTimeOut = 15000;
 
-    private String getExpectedInvokeUUIDUrl() {
-        String expectedUrl = "https://%s/api/account/%s/lambdas/%s/invoke?externalSystem=%s&v=%s";
-        return String.format(expectedUrl, faasEVGUrl, accountId, lambdaUUID, externalSystem, apiVersion);
-    }
-
-    private String getExpectedInvokeEventUrl() {
-        String expectedUrl = "https://%s/api/account/%s/events/%s/invoke?externalSystem=%s&v=%s";
-        return String.format(expectedUrl, faasEVGUrl, accountId, event, externalSystem, apiVersion);
-    }
-
-    private String getExpectedIsImplementedUrl() {
-        String expectedUrl = "https://%s/api/account/%s/events/%s/isImplemented?externalSystem=%s&v=%s";
-        return String.format(expectedUrl, faasEVGUrl, accountId, event, externalSystem, apiVersion);
-    }
-
-    private String getExpectedLambdasOfAnAccountUrl() {
-        String expectedUrl = "https://%s/api/account/%s/lambdas?v=%s&userId=%s";
-        return String.format(expectedUrl, faasGWUrl, accountId, apiVersion, userId);
-    }
-
-    private String getExpectedRequestBody(long timestamp, String headers, String payload) throws Exception {
-        String expectedBody = "{\"timestamp\":%d,\"headers\":%s,\"payload\":%s}";
-        return String.format(expectedBody, timestamp, headers, payload);
-    }
+    private OptionalParams optionalParams;
 
     @Before
-    public void before() throws Exception{
+    public void before() throws Exception {
+        client = getFaaSClient();
+        optionalParams = new OptionalParams();
         mockDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        when(csdsClientMock.get(eq(accountId), eq(FaaSWebClient.CSDS_EVG_SERVICE_NAME))).thenReturn(new BaseURIData(FaaSWebClient.CSDS_EVG_SERVICE_NAME, accountId, faasEVGUrl));
-        when(csdsClientMock.get(eq(accountId), eq(FaaSWebClient.CSDS_GW_SERVICE_NAME))).thenReturn(new BaseURIData(FaaSWebClient.CSDS_EVG_SERVICE_NAME, accountId, faasGWUrl));
+        optionalParams.setTimeOutInMs(defaultTimeOut);
+        optionalParams.setRequestId(requestId);
+        when(csdsClientMock.getDomain(eq(FaaSWebClient.CSDS_GW_SERVICE_NAME))).thenReturn(faasGWUrl);
+        when(csdsClientMock.getDomain(eq(FaaSWebClient.CSDS_UI_SERVICE_NAME))).thenReturn(faasUIUrl);
+        when(authSignatureBuilder.getAuthHeader()).thenReturn(authHeader);
     }
 
     @Test
-    public void stringInvocationViaUUIDTest() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
+    public void invokeViaUUIDWithRequestId() throws Exception {
         String payload = "request_data";
         long timestamp = System.currentTimeMillis();
+        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
+        invocationData.setTimestamp(timestamp);
+        optionalParams.setRequestId(requestId);
 
-        //Set method mocks for mock objects
-        //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn("\"lambda_result\"");
+        String response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams
+        );
 
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
+        verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp, "[]", "\"request_data\""), httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertTrue(httpHeaderCaptor.getValue().get(
+                "X-REQUEST-ID").contains(requestId));
+        assertEquals("Lambda invocation result does not match expected value",
+                "lambda_result", response);
 
-        //Create invocation data object
+    }
+
+    @Test
+    public void invokeViaUUIDWithStringPayload() throws Exception {
+        String payload = "request_data";
+        long timestamp = System.currentTimeMillis();
         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
         invocationData.setTimestamp(timestamp);
 
-        //#############
-        //# Execute
-        //#############
-        String response = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn("\"lambda_result\"");
+        String response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
 
-        //#############
-        //# Verify
-        //#############
+        verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                eq(accountId));
         assertEquals("Lambda invocation with the wrong body",
                 getExpectedRequestBody(timestamp, "[]", "\"request_data\""), httpBodyCaptor.getValue());
-
-        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
-
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
         assertEquals("Lambda invocation result does not match expected value",
                 "lambda_result", response);
     }
 
     @Test
-    public void stringInvocationWithoutPayloadUUIDTest() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
+    public void invokeViaUUIDWithoutPayload() throws Exception {
         long timestamp = System.currentTimeMillis();
-
-        //Set method mocks for mock objects
-        //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture())).thenReturn("\"lambda_result\"");
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //Create invocation data object
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, null);
         invocationData.setTimestamp(timestamp);
 
-        //#############
-        //# Execute
-        //#############
-        String response = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn("\"lambda_result\"");
+        String response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
 
-        //#############
-        //# Verify
-        //#############
+        verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                eq(accountId));
+
         assertEquals("Lambda invocation with the wrong body",
                 getExpectedRequestBody(timestamp, "[]", "{}"), httpBodyCaptor.getValue());
-
-        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
-
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
         assertEquals("Lambda invocation result does not match expected value",
                 "lambda_result", response);
     }
 
     @Test
-    public void objectInvocationViaUUIDTest() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
+    public void invokeViaUUIDWithUUIDResponsePayload() throws Exception {
         UUIDResponse payload = new UUIDResponse();
         payload.key = "requestKey";
         payload.value = "requestValue";
         long timestamp = System.currentTimeMillis();
-
-        //Set method mocks for mock objects
-        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
-                httpBodyCaptor.capture())).thenReturn("{\"key\":\"responseKey\",\"value\":\"responseValue\"}");
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //Create invocation data object
-        FaaSInvocation<UUIDResponse> invocationData = new FaaSInvocation();
-        Map<String, String> headers = new HashMap();
-        headers.put("testHeader", "testHeaderValue");
-        invocationData.setHeaders(headers);
-        invocationData.setPayload(payload);
-        invocationData.setTimestamp(timestamp);
-
-        //#############
-        //# Execute
-        //#############
-        UUIDResponse response = client.invoke(externalSystem, accountId, lambdaUUID, invocationData, UUIDResponse.class);
-
-        //#############
-        // # Verify
-        //#############
-        assertEquals("Lambda invocation with the wrong body",
-                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key\":\"requestKey\",\"value\":\"requestValue\"}"),
-                httpBodyCaptor.getValue());
-
-        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
-
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp, headers);
         UUIDResponse expectedResponse = new UUIDResponse();
         expectedResponse.key = "responseKey";
         expectedResponse.value = "responseValue";
-        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(), response.toString());
+
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn("{\"key\":\"responseKey\"," +
+                "\"value\":\"responseValue\"}");
+        UUIDResponse response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, UUIDResponse.class,
+                optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                        "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response.toString());
+    }
+
+    @Test(expected = FaaSDetailedException.class)
+    public void invokeViaUUIDThrowsFaasDetailedException() throws IOException, FaaSException {
+        try {
+            FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+            RestException exception = new RestException("Error during rest call.",
+                    objectMapper.writeValueAsString(faaSError),
+                    500);
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+
+            when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(exception);
+            client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByUUIDFailure(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                    eq(accountId), eq(500), any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSLambdaException.class)
+    public void invokeViaUUIDThrowFaaSLambdaException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+            FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(), "My custom error.");
+
+            when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(new RestException("Error during rest call.", objectMapper.writeValueAsString(faaSError),
+                            500));
+            client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByUUIDFailure(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                    eq(accountId), eq(500), any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSException.class)
+    public void invokeViaUUIDThrowsFaaSException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+            when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(NullPointerException.class);
+            client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByUUIDFailure(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                    eq(accountId), eq(-1), any());
+            throw ex;
+
+        }
     }
 
     @Test
-    public void objectInvocationViaEventTest() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
+    public void invokeViaEventType() throws Exception {
         UUIDResponse payload = new UUIDResponse();
         payload.key = "requestKey";
         payload.value = "requestValue";
         long timestamp = System.currentTimeMillis();
-
-        //Set method mocks for mock objects
         String mockResponse = "[\n" +
                 "  {\n" +
                 "    \"uuid\": \"" + lambdaUUID + "\",\n" +
@@ -230,52 +262,529 @@ public class FaaSClientTest {
                 "    }\n" +
                 "  }\n" +
                 "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp, headers);
+        EventResponse expectedResponse = getExpectedResponse();
 
         when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
-                httpBodyCaptor.capture())).thenReturn(mockResponse);
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(externalSystem,
+                FaaSEvent.ChatPostSurveyEmailTranscript,
+                invocationData, EventResponse[].class, optionalParams);
 
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //Create invocation data object
-        FaaSInvocation<UUIDResponse> invocationData = new FaaSInvocation();
-        Map<String, String> headers = new HashMap();
-        headers.put("testHeader", "testHeaderValue");
-        invocationData.setHeaders(headers);
-        invocationData.setPayload(payload);
-        invocationData.setTimestamp(timestamp);
-
-        //#############
-        //# Execute
-        //#############
-        EventResponse[] response = client.invoke(externalSystem, accountId, FaaSEvent.ChatPostSurveyEmailTranscript, invocationData, EventResponse[].class);
-
-        //#############
-        // # Verify
-        //#############
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyInt(), eq(event.toString()),
+                eq(accountId));
         assertEquals("Lambda invocation with the wrong body",
-                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key\":\"requestKey\",\"value\":\"requestValue\"}"),
+                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                        "\":\"requestKey\",\"value\":\"requestValue\"}"),
                 httpBodyCaptor.getValue());
-
-        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get("Authorization").contains("OAuth"));
-
-        EventResponse expectedResponse = new EventResponse();
-        expectedResponse.uuid = lambdaUUID;
-        expectedResponse.timestamp = mockDateFormat.parse("2017-07-09");
-        expectedResponse.result = new UUIDResponse();
-        expectedResponse.result.key = "responseKey";
-        expectedResponse.result.value = "responseValue";
-        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(), response[0].toString());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
     }
 
     @Test
-    public void getLambdasOfAnAccountTest() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-
-        //Set method mocks for mock objects
+    public void invokeViaEventTypeWithEventString() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
         String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp, headers);
+        EventResponse expectedResponse = getExpectedResponse();
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(externalSystem,
+                FaaSEvent.ChatPostSurveyEmailTranscript.toString(),
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyInt(), eq(event.toString()),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                        "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+    }
+
+    @Test
+    public void invokeViaEventTypeWithEventStringWithRequestId() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp, headers);
+        EventResponse expectedResponse = getExpectedResponse();
+        optionalParams.setRequestId(requestId);
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(externalSystem,
+                FaaSEvent.ChatPostSurveyEmailTranscript.toString(),
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyInt(), eq(event.toString()),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                        "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+    }
+
+    @Test
+    public void invokeViaEventTypeWithRequestId() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp, headers);
+        EventResponse expectedResponse = getExpectedResponse();
+        optionalParams.setRequestId(requestId);
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(externalSystem,
+                FaaSEvent.ChatPostSurveyEmailTranscript,
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp, "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                        "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "X-REQUEST-ID").contains(requestId));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+    }
+
+    @Test(expected = FaaSException.class)
+    public void invokeViaEventTypeThrowFaaSException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+
+            when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(new IOException("Error during rest call."));
+            client.invokeByEvent(externalSystem, event, invocationData, EventResponse[].class, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByEventFailure(eq(externalSystem), anyFloat(),
+                    eq(event.toString()), eq(accountId), eq(-1), any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSLambdaException.class)
+    public void invokeViaEventTypeThrowsFaaSLambdaException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+            FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(), "My custom error.");
+
+            when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(new RestException("Error during rest call.", objectMapper.writeValueAsString(faaSError),
+                            500));
+            client.invokeByEvent(externalSystem, event, invocationData, EventResponse[].class, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByEventFailure(eq(externalSystem), anyFloat(),
+                    eq(event.toString()), eq(accountId), eq(500), any());
+            throw ex;
+        }
+    }
+
+    @Test
+    public void invokeWithUUIDWithoutResponse() throws IOException, FaaSException {
+        Map<String, String> headers = getHeaders();
+        FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+
+        client.invokeByUUID(externalSystem, lambdaUUID, faaSInvocation, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                eq(accountId));
+        verify(restClientMock, times(1)).post(getExpectedInvokeUUIDUrl(), headers,
+                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+    }
+
+    @Test
+    public void invokeWithUUIDWithRequestIdWithoutResponse() throws IOException, FaaSException {
+        Map<String, String> headers = getCompleteHeaders();
+        FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+        optionalParams.setRequestId(requestId);
+
+        client.invokeByUUID(externalSystem, lambdaUUID, faaSInvocation, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                eq(accountId));
+        verify(restClientMock, times(1)).post(getExpectedInvokeUUIDUrl(), headers,
+                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+    }
+
+    @Test
+    public void invokeWithFaaSEventWithoutResponse() throws IOException, FaaSException {
+        Map<String, String> headers = getHeaders();
+        FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+
+        client.invokeByEvent(externalSystem, event, faaSInvocation, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        verify(restClientMock, times(1)).post(getExpectedInvokeEventUrl(), headers,
+                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+    }
+
+    @Test
+    public void invokeWithFaaSEventWithEventStringWithoutResponse() throws IOException, FaaSException {
+        Map<String, String> headers = getHeaders();
+        FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+
+        client.invokeByEvent(externalSystem, event.toString(), faaSInvocation, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        verify(restClientMock, times(1)).post(getExpectedInvokeEventUrl(), headers,
+                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+    }
+
+    @Test
+    public void invokeWithFaaSEventWithRequestIdWithoutResponse() throws IOException, FaaSException {
+        Map<String, String> headers = getCompleteHeaders();
+        FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+        optionalParams.setRequestId(requestId);
+
+        client.invokeByEvent(externalSystem, event, faaSInvocation, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        verify(restClientMock, times(1)).post(getExpectedInvokeEventUrl(), headers,
+                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+    }
+
+    @Test
+    public void invokeWithFaaSEventWithRequestIdAndEventStringWithoutResponse() throws IOException, FaaSException {
+        Map<String, String> headers = getCompleteHeaders();
+        FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+        optionalParams.setRequestId(requestId);
+
+        client.invokeByEvent(externalSystem, event.toString(), faaSInvocation, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(externalSystem), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        verify(restClientMock, times(1)).post(getExpectedInvokeEventUrl(), headers,
+                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+    }
+
+    @Test(expected = FaaSDetailedException.class)
+    public void invokeViaUUIDNoResponseThrowsFaasDetailedException() throws Exception {
+        long timestamp = System.currentTimeMillis();
+        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+        invocationData.setTimestamp(timestamp);
+        FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()
+                , eq(defaultTimeOut)))
+                .thenThrow(new RestException("Error during rest call.", objectMapper.writeValueAsString(faaSError),
+                        500));
+        client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
+    }
+
+    @Test(expected = FaaSLambdaException.class)
+    public void invokeViaUUIDNoResponseThrowFaaSLambdaException() throws Exception {
+        long timestamp = System.currentTimeMillis();
+        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+        invocationData.setTimestamp(timestamp);
+        FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(), "My custom error.");
+
+        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()
+                , eq(defaultTimeOut)))
+                .thenThrow(new RestException("Error during rest call.", objectMapper.writeValueAsString(faaSError),
+                        500));
+        client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
+    }
+
+    @Test(expected = FaaSException.class)
+    public void invokeViaUUIDNoResponseThrowsFaaSException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+
+            when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(NullPointerException.class);
+            client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByUUIDFailure(eq(externalSystem), anyFloat(), eq(lambdaUUID),
+                    eq(accountId), eq(-1), any());
+            throw ex;
+        }
+    }
+
+    @Test
+    public void getLambdas() throws Exception {
+        String mockResponse = getMockResponse();
+
+        when(restClientMock.get(eq(getExpectedLambdasOfAnAccountUrl()), httpHeaderCaptor.capture(), eq(defaultTimeOut)))
+                .thenReturn(mockResponse);
+        List<LambdaResponse> actualResponse = client.getLambdas(userId, new HashMap<String, String>(), optionalParams);
+        List<LambdaResponse> expectedResponse = objectMapper.readValue(mockResponse,
+                new TypeReference<List<LambdaResponse>>() {
+                });
+
+        verify(metricCollectorMock, times(1)).onGetLambdasSuccess(eq(userId), anyFloat(), eq(accountId));
+        assertEquals(expectedResponse.get(0), actualResponse.get(0));
+    }
+
+    @Test
+    public void getLambdasWithOptionalQueryParameters() throws IOException {
+        Map<String, String> headers = getHeaders();
+        LambdaResponse lambdaResponse = new LambdaResponse();
+        LambdaResponse[] responses = new LambdaResponse[2];
+        responses[0] = lambdaResponse;
+        String myResponse = objectMapper.writeValueAsString(responses);
+        HashMap<String, String> filterMap = new HashMap<String, String>();
+        filterMap.put("state", "Productive");
+        filterMap.put("eventId", "eventId");
+        filterMap.put("name", "myFilter");
+        String expectedUrl = String.format("https://faasUI.com/api/account/%s/lambdas?v=1&userId=%s" +
+                "&state=Productive&eventId=eventId&name=myFilter", accountId, userId);
+
+        when(restClientMock.get(urlCaptor.capture(), any(), anyInt())).thenReturn(myResponse);
+        try {
+            client.getLambdas(userId, filterMap, optionalParams);
+        } catch (FaaSException e) {
+        }
+
+        verify(metricCollectorMock, times(1)).onGetLambdasSuccess(eq(userId), anyFloat(), eq(accountId));
+        assertEquals(expectedUrl, urlCaptor.getValue());
+
+    }
+
+    @Test(expected = FaaSDetailedException.class)
+    public void getLambdasThrowFaaSDetailedException() throws Exception {
+        try {
+            FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+
+            when(restClientMock.get(eq(getExpectedLambdasOfAnAccountUrl()), anyMap(), eq(defaultTimeOut)))
+                    .thenThrow(new RestException("Error during call.", objectMapper.writeValueAsString(faaSError),
+                            500));
+
+            client.getLambdas(userId, new HashMap<String, String>(), optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onGetLambdasFailure(eq(userId), anyFloat(), eq(accountId), eq(500),
+                    any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSException.class)
+    public void getLambdasThrowFaaSExceptionIfResponseNotParsable() throws IOException, FaaSException {
+        try {
+            when(restClientMock.get(eq(getExpectedLambdasOfAnAccountUrl()), httpHeaderCaptor.capture(),
+                    eq(defaultTimeOut)))
+                    .thenThrow(new RestException("Error during call.", "This is an unexpected error response.", 500));
+            client.getLambdas(userId, new HashMap<String, String>(), optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onGetLambdasFailure(eq(userId), anyFloat(), eq(accountId), eq(500),
+                    any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSException.class)
+    public void getLambdasThrowFaaSExceptionWhenRuntimeExceptionOccurs() throws IOException, FaaSException {
+        try {
+            when(restClientMock.get(eq(getExpectedLambdasOfAnAccountUrl()), httpHeaderCaptor.capture(),
+                    eq(defaultTimeOut)))
+                    .thenThrow(new NullPointerException());
+            client.getLambdas(userId, new HashMap<String, String>(), optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onGetLambdasFailure(eq(userId), anyFloat(), eq(accountId), eq(-1),
+                    any());
+            throw ex;
+        }
+    }
+
+    @Test
+    public void isImplementedEventRetrievedFromCache() throws Exception {
+        FaaSEventImplementedExpiry eventExpiry = new FaaSEventImplementedExpiry();
+        eventExpiry.setImplemented(true);
+        eventExpiry.setExpirationDate(LocalDateTime.now().plusMinutes(2));
+
+        when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(), eq(defaultTimeOut))).thenReturn(
+                "{\"implemented\": true}");
+        when(defaultIsImplementedCacheMock.getIfCachedAndValid(eq(event.toString()))).thenReturn(eventExpiry);
+
+        boolean isImplemented = client.isImplemented(externalSystem, event, optionalParams);
+
+        verify(metricCollectorMock, times(0)).onIsImplementedSuccess(eq(externalSystem), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        assertTrue("Lambda should be implemented", isImplemented);
+        verify(restClientMock, times(0)).get(any(), any(), eq(optionalParams.getTimeOutInMs()));
+    }
+
+    @Test(expected = FaaSDetailedException.class)
+    public void isImplementedThrowsFaaSDetailedException() throws IOException, FaaSException {
+        try {
+            FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+
+            when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(new RestException("Error during rest call.", objectMapper.writeValueAsString(faaSError),
+                            500));
+
+            client.isImplemented(externalSystem, event, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onIsImplementedFailure(eq(externalSystem), anyFloat(),
+                    eq(event.toString()), eq(accountId), eq(500), any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSException.class)
+    public void isImplementedThrowFaaSException() throws FaaSException, TokenGenerationException {
+        try {
+            when(authSignatureBuilder.getAuthHeader()).thenThrow(new TokenGenerationException("could not generate " +
+                    "token"));
+            client.isImplemented(externalSystem, event, optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onIsImplementedFailure(eq(externalSystem), anyFloat(),
+                    eq(event.toString()), eq(accountId), eq(-1), any());
+            throw ex;
+        }
+
+    }
+
+    private FaaSWebClient getFaaSClient() {
+        return new FaaSWebClient.Builder(accountId).withCsdsClient(csdsClientMock)
+                .withRestClient(restClientMock)
+                .withAuthSignatureBuilder(authSignatureBuilder)
+                .withMetricCollector(metricCollectorMock)
+                .withIsImplementedCache(defaultIsImplementedCacheMock)
+                .build();
+    }
+
+    private ConcurrentMap<String, FaaSEventImplementedExpiry> setUpCache() {
+        ConcurrentMap<String, FaaSEventImplementedExpiry> implementationCache = new ConcurrentHashMap<>();
+        LocalDateTime futureExpirationDate = LocalDateTime.now().plusMinutes(5);
+        FaaSEventImplementedExpiry expiry = new FaaSEventImplementedExpiry();
+        expiry.setImplemented(true);
+        expiry.setExpirationDate(futureExpirationDate);
+        implementationCache.put(event.toString(), expiry);
+        return implementationCache;
+    }
+
+    private Map<String, String> getHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", authHeader);
+        headers.put("X-REQUEST-ID", requestId);
+        return headers;
+    }
+
+    private Map<String, String> getCompleteHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", authHeader);
+        headers.put("X-REQUEST-ID", requestId);
+        return headers;
+    }
+
+    private Map<String, String> getTestHeaders() {
+        Map<String, String> headers = new HashMap();
+        headers.put("testHeader", "testHeaderValue");
+        return headers;
+    }
+
+    private FaaSInvocation<UUIDResponse> getUUIDResponseFaaSInvocation(UUIDResponse payload, long timestamp,
+                                                                       Map<String, String> headers) {
+        FaaSInvocation<UUIDResponse> invocationData = new FaaSInvocation();
+        invocationData.setHeaders(headers);
+        invocationData.setPayload(payload);
+        invocationData.setTimestamp(timestamp);
+        return invocationData;
+    }
+
+    private FaaSInvocation<String> getStringFaaSInvocation(Map<String, String> headers) {
+        FaaSInvocation<String> faaSInvocation = new FaaSInvocation<String>();
+        faaSInvocation.setTimestamp(100);
+        faaSInvocation.setHeaders(headers);
+        faaSInvocation.setPayload("payload");
+        return faaSInvocation;
+    }
+
+    private String getExpectedInvokeUUIDUrl() {
+        String expectedUrl = "https://%s/api/account/%s/lambdas/%s/invoke?externalSystem=%s&v=%s";
+        return String.format(expectedUrl, faasGWUrl, accountId, lambdaUUID, externalSystem, apiVersion);
+    }
+
+    private String getExpectedInvokeEventUrl() {
+        String expectedUrl = "https://%s/api/account/%s/events/%s/invoke?externalSystem=%s&v=%s";
+        return String.format(expectedUrl, faasGWUrl, accountId, event, externalSystem, apiVersion);
+    }
+
+    private String getExpectedIsImplementedUrl() {
+        String expectedUrl = "https://%s/api/account/%s/events/%s/isImplemented?externalSystem=%s&v=%s";
+        return String.format(expectedUrl, faasGWUrl, accountId, event, externalSystem, apiVersion);
+    }
+
+    private String getExpectedLambdasOfAnAccountUrl() {
+        String expectedUrl = "https://%s/api/account/%s/lambdas?v=%s&userId=%s";
+        String faasUIUrl = "faasUI.com";
+        return String.format(expectedUrl, faasUIUrl, accountId, apiVersion, userId);
+    }
+
+    private String getExpectedRequestBody(long timestamp, String headers, String payload) throws Exception {
+        String expectedBody = "{\"timestamp\":%d,\"headers\":%s,\"payload\":%s}";
+        return String.format(expectedBody, timestamp, headers, payload);
+    }
+
+    private String getMockResponse() {
+        return "[\n" +
                 "  {\n" +
                 "    \"uuid\": \"6d0372f3-524c-4fe9-a9a4-bf0157c9deac\",\n" +
                 "    \"version\": 1,\n" +
@@ -303,7 +812,8 @@ public class FaaSClientTest {
                 "      \"createdAt\": \"2019-07-22T20:51:28.000Z\",\n" +
                 "      \"deployedAt\": \"2019-07-22T21:02:33.000Z\",\n" +
                 "      \"createdBy\": \"2851393312\",\n" +
-                "      \"imageName\": \"lpcr.int.liveperson.net/faas/lp-tlv-6d0372f3-524c-4fe9-a9a4-bf0157c9deac:1\",\n" +
+                "      \"imageName\": \"lpcr.int.liveperson.net/faas/lp-tlv-6d0372f3-524c-4fe9-a9a4-bf0157c9deac:1\"," +
+                "\n" +
                 "      \"deploymentState\": \"Deploy Finish\"\n" +
                 "    },\n" +
                 "    \"implementation\": {\n" +
@@ -313,154 +823,15 @@ public class FaaSClientTest {
                 "    }\n" +
                 "  }\n" +
                 "]";
-
-        when(restClientMock.get(eq(getExpectedLambdasOfAnAccountUrl()), httpHeaderCaptor.capture()))
-                .thenReturn(mockResponse);
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //#############
-        //# Execute
-        //#############
-        List<LambdaResponse> actualResponse = client.getLambdasOfAccount(accountId, userId, new HashMap<String, String>());
-
-        //#############
-        // # Verify
-        //#############
-        List<LambdaResponse> expectedResponse = objectMapper.readValue(mockResponse, new TypeReference<List<LambdaResponse>>() { });
-        assertEquals(expectedResponse.get(0), actualResponse.get(0));
     }
 
-    @Test(expected = FaaSException.class)
-    public void throwFaaSExceptionAtHttpErrorForEventInvoke() throws Exception{
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
-        long timestamp = System.currentTimeMillis();
-
-        //Set method mocks for mock objects
-        //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
-                .thenThrow(new IOException("Error during rest call."));
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //Create invocation data object
-        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
-        invocationData.setTimestamp(timestamp);
-
-        //#############
-        //# Execute
-        //#############
-        client.invoke(externalSystem, accountId, event, invocationData, EventResponse[].class);
-    }
-
-    @Test(expected = FaaSException.class)
-    public void throwFaaSExceptionAtHttpErrorForUUIDInvoke() throws Exception{
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
-        long timestamp = System.currentTimeMillis();
-
-        //Set method mocks for mock objects
-        //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
-                .thenThrow(new IOException("Error during rest call."));
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //Create invocation data object
-        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
-        invocationData.setTimestamp(timestamp);
-
-        //#############
-        //# Execute
-        //#############
-        client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
-    }
-
-    @Test(expected = FaaSException.class)
-    public void throwFaaSExceptionAtOtherErrorForUUIDInvoke() throws Exception{
-        //#############
-        //# Prepare
-        //#############
-        //Set test specific data
-        long timestamp = System.currentTimeMillis();
-
-        //Set method mocks for mock objects
-        //Mock the lambda invocation
-        when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(), httpBodyCaptor.capture()))
-                .thenThrow(NullPointerException.class);
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //Create invocation data object
-        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
-        invocationData.setTimestamp(timestamp);
-
-        //#############
-        //# Execute
-        //#############
-        client.invoke(externalSystem, accountId, lambdaUUID, invocationData, String.class);
-    }
-
-    @Test
-    public void checkIfEventIsImplementedTest() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-
-        //Set method mocks for mock objects
-        //Mock the isImplemented call
-        when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture())).thenReturn("{\"implemented\": true}");
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //#############
-        //# Execute
-        //#############
-        boolean isImplemented = client.isImplemented(externalSystem, accountId, event);
-
-        //#############
-        //# Verify
-        //#############
-        assertTrue("Lambda should be implemented", isImplemented);
-    }
-
-    @Test(expected = FaaSException.class)
-    public void throwFaaSExceptionAtIsImplemented() throws Exception {
-        //#############
-        //# Prepare
-        //#############
-
-        //Set method mocks for mock objects
-        //Raise exception during call
-        when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture()))
-                .thenThrow(new IOException("Error during rest call."));
-
-        //Create faas client instance
-        FaaSClient client = new FaaSWebClient(csdsClientMock, restClientMock, oAuthSignaturBuilder);
-
-        //#############
-        //# Execute
-        //#############
-        boolean isImplemented = client.isImplemented(externalSystem, accountId, event);
-    }
-
-    @Test
-    public void getInstanceViaCSDSDomain() throws Exception {
-        FaaSWebClient.getInstance("192.168.21.129:8080", apiKey, apiSecret);
-    }
-
-    @Test
-    public void getInstanceViaCSDSClient() throws Exception {
-        FaaSWebClient.getInstance(CsdsWebClient.getInstance(), apiKey, apiSecret);
+    private EventResponse getExpectedResponse() throws ParseException {
+        EventResponse expectedResponse = new EventResponse();
+        expectedResponse.uuid = lambdaUUID;
+        expectedResponse.timestamp = mockDateFormat.parse("2017-07-09");
+        expectedResponse.result = new UUIDResponse();
+        expectedResponse.result.key = "responseKey";
+        expectedResponse.result.value = "responseValue";
+        return expectedResponse;
     }
 }
