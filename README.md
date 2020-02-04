@@ -10,7 +10,7 @@ For more details on LivePerson Functions & its API have a look at:
 
 ## Adding the client as maven dependency
 
-Go to your project's pom.xml file and add the dependency.
+Go to your project's pom.xml file and add as dependency.
 
 ```xml
 <dependency>
