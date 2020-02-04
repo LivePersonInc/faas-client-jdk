@@ -1,0 +1,15 @@
+# Apple Specific
+.DS_Store
+
+# IntelliJ Files
+/.idea
+FaaSClient.iml
+
+# Ignore Build Folder
+/target
+
+#Ignore env file
+.env
+
+FaaSClient.ipr
+FaaSClient.iws
