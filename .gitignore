@@ -10,6 +10,6 @@ FaaSClient.iml
 
 #Ignore env file
 .env
-
+/functions-client.iml
 FaaSClient.ipr
 FaaSClient.iws
