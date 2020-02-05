@@ -21,7 +21,7 @@
             <email>faas-lp@liveperson.com</email>
         </developer>
     </developers>
-    
+
     <profiles>
         <!-- GPG Signature on release -->
         <profile>
@@ -153,6 +153,14 @@
         <url>https://github.com/LivePersonInc/faas-client-jdk.git</url>
         <tag>HEAD</tag>
     </scm>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://github.com/LivePersonInc/faas-client-jdk/blob/develop/LICENSE.md</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <dependencies>
         <dependency>
