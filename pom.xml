@@ -156,8 +156,7 @@
 
     <licenses>
         <license>
-            <name>MIT License</name>
-            <url>https://github.com/LivePersonInc/faas-client-jdk/blob/develop/LICENSE.md</url>
+            <name>MIT</name>
             <distribution>repo</distribution>
         </license>
     </licenses>
