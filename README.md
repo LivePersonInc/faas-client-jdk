@@ -1,5 +1,5 @@
 
-# FaaS-Client (Java)   ![Alt text](logo.png "Logo")
+# Functions-Client (Java)   ![Alt text](logo.png "Logo")
 
 The client can be used for invoking lambdas that have been deployed on LivePerson Functions site.
 It offers functionality to retrieve all lambdas and to invoke them via lambda UUID or event IDs.
@@ -16,7 +16,7 @@ Go to your project's pom.xml file and add as dependency.
 <dependency>
             <groupId>com.liveperson.faas</groupId>
             <artifactId>functions-client</artifactId>
-            <version>1.0.0.0</version>
+            <version>1.1.0</version>
 </dependency>
 ```
 
@@ -118,7 +118,7 @@ builder.withMetricCollector(metricCollector);
 ### Preparing data for RESTful API calls
 
 ```java
-String lambdaUUID = "545fc8a2-b9d9-4e76-9b55-17b38e6181c9";
+String lambdaUUID = "UUID";
 String externalSystem = "botStudio";
 ```
 
