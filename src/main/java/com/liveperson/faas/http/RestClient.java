@@ -16,9 +16,9 @@ public interface RestClient {
      * @param url         the url to the API endpoint
      * @param headers     the headers values map
      * @param jsonBody    the json body as string
-     * @param timeOutInMs
+     * @param timeOutInMs time after which request times out
      * @return response body as string
-     * @throws IOException
+     * @throws IOException when response can not be read
      */
     String post(String url, Map<String, String> headers, String jsonBody, int timeOutInMs) throws IOException;
 
@@ -29,7 +29,7 @@ public interface RestClient {
      * @param headers  the headers values map
      * @param jsonBody the json body as string
      * @return response body as string
-     * @throws IOException
+     * @throws IOException when response can not be read
      */
     String post(String url, Map<String, String> headers, String jsonBody) throws IOException;
 
@@ -38,9 +38,9 @@ public interface RestClient {
      *
      * @param url         the url to the API endpoint
      * @param headers     the headers values map
-     * @param timeOutInMs
+     * @param timeOutInMs time after which request times out
      * @return response body as string
-     * @throws IOException
+     * @throws IOException when response can not be read
      */
     String get(String url, Map<String, String> headers, int timeOutInMs) throws IOException;
 
@@ -50,7 +50,7 @@ public interface RestClient {
      * @param url     the url to the API endpoint
      * @param headers the headers values map
      * @return response body as string
-     * @throws IOException
+     * @throws IOException when response can not be read
      */
     String get(String url, Map<String, String> headers) throws IOException;
 
