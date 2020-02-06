@@ -11,7 +11,7 @@ public interface BearerGenerator {
 
     /**
      * @return bearer token used for authentication
-     * @throws TokenGenerationException
+     * @throws TokenGenerationException when token generation fails
      */
     String retrieveBearerToken() throws TokenGenerationException;
 

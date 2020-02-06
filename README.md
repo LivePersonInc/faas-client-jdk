@@ -1,5 +1,5 @@
 
-# FaaS-Client (Java)   ![Alt text](logo.png "Logo")
+# Functions-Client (Java)   ![Alt text](logo.png "Logo")
 
 The client can be used for invoking lambdas that have been deployed on LivePerson Functions site.
 It offers functionality to retrieve all lambdas and to invoke them via lambda UUID or event IDs.
@@ -16,7 +16,7 @@ Go to your project's pom.xml file and add as dependency.
 <dependency>
             <groupId>com.liveperson.faas</groupId>
             <artifactId>functions-client</artifactId>
-            <version>1.0.0.0</version>
+            <version>1.1.0</version>
 </dependency>
 ```
 
@@ -118,7 +118,7 @@ builder.withMetricCollector(metricCollector);
 ### Preparing data for RESTful API calls
 
 ```java
-String lambdaUUID = "545fc8a2-b9d9-4e76-9b55-17b38e6181c9";
+String lambdaUUID = "UUID";
 String externalSystem = "botStudio";
 ```
 
@@ -357,7 +357,7 @@ More detailed information about Log4j2 can be found [here](https://logging.apach
 ## Exception handling
 
 LivePerson Functions can raise different kind of exceptions. General exceptions are wrapped in a `FaaSException`.
-`FaaSDetailedException`s occur when the request has been rejected by the service. For instance if the UUID of the lambda for invocation request does not exist. In order to get more details we recommend using the `getFaaSError` method. For a list of all error codes see [here](https://lpgithub.dev.lprnd.net/RnD-Mannheim/faas-error-codes/blob/master/index.ts).
+`FaaSDetailedException`s occur when the request has been rejected by the service. For instance if the UUID of the lambda for invocation request does not exist. In order to get more details we recommend using the `getFaaSError` method. For a list of all error codes see [here](https://developers.liveperson.com/liveperson-functions-external-invocations-error-codes.html).
 `FaaSLambdaException` inherits from `FaaSDetailedException`. It is only raised during invocations, if the error is caused by the implementation of the lambda itself. For instance if the lambda returns an error on purpose or the lambda has a timeout. We recommend to monitor all the exceptions by using `e.printStackTrace()`, as this provides way more details then the error message alone. Alerting should only be done for `FaaSException`s or `FaaSDetailedException`.
 
 ```java

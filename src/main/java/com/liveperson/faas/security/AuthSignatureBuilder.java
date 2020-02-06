@@ -11,7 +11,7 @@ public interface AuthSignatureBuilder {
 
     /**
      * Generate authorization header string
-     *
+     * @throws TokenGenerationException when token generation fails
      * @return the authorization header
      */
     String getAuthHeader() throws TokenGenerationException;
