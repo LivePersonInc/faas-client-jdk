@@ -137,7 +137,7 @@ optionalParams.setRequestId("requestId");
 ### Fetching lambdas
 
 
-**You have to use your own authentication method for this to use as it still relies on OAuth 1.0.**
+**You have to use your own authentication method for this as it still relies on OAuth 1.0.**
 
 
 <details><summary>Fetching lambdas of account</summary>
