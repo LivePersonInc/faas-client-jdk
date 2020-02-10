@@ -1,8 +1,12 @@
 language: java
 dist: trusty
-script: "mvn cobertura:cobertura"
+script: mvn cobertura:cobertura
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)
 jdk:
-  - oraclejdk8
-  - openjdk8
+- oraclejdk8
+- openjdk8
+notifications:
+  slack:
+    if: type = pull_request
+    secure: 04NYDY5arCiwKmoeAg5IRLUKY+LNdMYo1CdCYHTT95vRBEbMTvyJGlvpbAdKypCIUK4lEQMI2+HwdEInar8bK5udrxHGbspjCBtqOR6dgcF9LfYwQ6QMXLRnsi/zt1+k/ghDNGfZsWmDfUrV3SLeIgBePyTqKF+WU8NMHtHFGD4RTMuHcqDcWB2M+AcmmOAsUyn48FpgD8X3tcS721fdDed5LA1T2inmI3zsqRgUCqXZepwA+Mu1L8lzpKn0prvk3SgR+d9SfrcrX+7Ww9qZ+O1GAAsDBLHUIo+95nIUUz9OzFnoaRS9Z2G3YEgclaz/sp03IB+zErbilM63Ib3Hjs3EXMYeeyxVLeM98sj0bhxKdN8cDlg/+69JWF60IfdgBoDnbtc2zJ5upEBmVxYhtzQu0BA1Rk6AZN/M5r0io76gpJVCADzpdH25hQN2M3tJDPRa2oOTAheoRx/kf59hswJuUx2wGLrN+SKrZDTJmK24DHb4A6Z6zfj9tY6ymdLdpcDxMUCnN1rd8CfhUIVB76q2ni9v/sG+fwFyJgszyEUkbY0nP8z+trn50SzDlcEzH/TQAD30o5pACmlQLQvqAlwAuvyEJ69HJ//RIRp9VnNVugMUOHtZ3UquY+aydJ/9Wq8Cgpn6sMHk3APxtDtYdj75tjWxJ1rHkaQZvZr9KMs=
