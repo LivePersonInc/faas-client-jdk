@@ -1,7 +1,7 @@
 
 # Functions-Client (Java)   ![Alt text](logo.png "Logo")
 
-The client can be used for invoking lambdas that have been deployed on LivePerson Functions site.
+The client can be used to invoke lambdas that have been deployed on LivePerson Functions site.
 It offers functionality to retrieve all lambdas and to invoke them via lambda UUID or event IDs.
 
 For more details on LivePerson Functions & its API have a look at:
