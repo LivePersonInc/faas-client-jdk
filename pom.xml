@@ -1,27 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-
     <groupId>com.liveperson.faas</groupId>
     <artifactId>functions-client</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <name>Functions Client</name>
     <description>Functions client for invoking lambdas via the eventsource gateway (a.k.a Asgard)</description>
-
+    <url>https://github.com/LivePersonInc/faas-client-jdk</url>
     <organization>
         <name>LivePerson</name>
         <url>http://www.liveperson.com</url>
     </organization>
-
     <developers>
         <developer>
             <name>FaaS team</name>
             <email>faas-lp@liveperson.com</email>
         </developer>
     </developers>
-
     <profiles>
         <!-- GPG Signature on release -->
         <profile>
@@ -42,6 +37,9 @@
                             <execution>
                                 <id>sign-artifacts</id>
                                 <phase>verify</phase>
+                                <configuration>
+                                    <useAgent>true</useAgent>
+                                </configuration>
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
@@ -52,7 +50,6 @@
             </build>
         </profile>
     </profiles>
-    
     <build>
         <plugins>
             <plugin>
@@ -140,13 +137,11 @@
                         <format>html</format>
                         <format>xml</format>
                     </formats>
-                    <check />
+                    <check/>
                 </configuration>
             </plugin>
         </plugins>
     </build>
-
-
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
@@ -154,25 +149,21 @@
         </snapshotRepository>
         <repository>
             <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/
-            </url>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-
     <scm>
         <connection>scm:git:git://github.com/LivePersonInc/faas-client-jdk.git</connection>
         <developerConnection>scm:git:git@github.com:LivePersonInc/faas-client-jdk.git</developerConnection>
         <url>https://github.com/LivePersonInc/faas-client-jdk.git</url>
         <tag>HEAD</tag>
     </scm>
-  
     <licenses>
         <license>
             <name>MIT</name>
             <distribution>repo</distribution>
         </license>
     </licenses>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -222,5 +213,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
 </project>
