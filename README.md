@@ -131,7 +131,7 @@ The maximum for the timeout should be 60 seconds as FaaS functions time out afte
 
 ```java
 OptionalParams optionalParams = new OptionalParams();
-optionalParams.setTimeOutInMs(60000)
+optionalParams.setTimeOutInMs(65000)
 optionalParams.setRequestId("requestId");
 ```
 
