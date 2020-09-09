@@ -18,7 +18,7 @@ Go to your project's pom.xml file and add as dependency.
 <dependency>
   <groupId>com.liveperson.faas</groupId>
   <artifactId>functions-client</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.2</version>
 </dependency>
 ```
 
