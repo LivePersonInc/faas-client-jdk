@@ -8,9 +8,9 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,6 +27,7 @@ public class RestClientTest {
         mockServer = HttpServer.create(new InetSocketAddress(mockServerPort), 0);
         mockServer.createContext("/successHandler", new RestClientTest.SuccessHandler());
         mockServer.createContext("/errorHandler", new RestClientTest.ErrorHandler());
+        mockServer.createContext("/returnRequestBodyHandler", new RestClientTest.ReturnRequestBodyHandler());
         mockServer.setExecutor(null);
         mockServer.start();
     }
@@ -52,6 +53,16 @@ public class RestClientTest {
         RestClient restClient = new DefaultRestClient();
         String response = restClient.post(baseUrl + "/successHandler", headers, "test");
         assertEquals("Response not correctly received", "Test", response);
+    }
+
+
+    @Test
+    public void successPostResponseRightEncodingTest() throws Exception {
+        Map<String, String> headers = new HashMap<String, String>();
+        RestClient restClient = new DefaultRestClient();
+        String jsonBody = "{\"encoding\":\"Englishåøñ \uD83D\uDD96 \uD83D\uDE02 ಕನ್ನಡ\"}";
+        String response = restClient.post(baseUrl + "/returnRequestBodyHandler", headers, jsonBody, 15000);
+        assertEquals("Response not correctly received", jsonBody, response);
     }
 
     @Test
@@ -138,6 +149,34 @@ public class RestClientTest {
             he.sendResponseHeaders(400, response.length());
             OutputStream os = he.getResponseBody();
             os.write(response.getBytes());
+            os.close();
+        }
+    }
+
+    //Define handler for success route of http server with same response body as request body
+    public static class ReturnRequestBodyHandler implements HttpHandler {
+
+        public void handle(HttpExchange he) throws IOException {
+            //Read request body
+            InputStreamReader input = new InputStreamReader( he.getRequestBody());
+            int i;
+            String output = "";
+            while ((i = input.read()) != -1){
+                output += (char)i;
+            }
+            input.close();
+
+            String response = output;
+
+            //Encode request body and send it as response body
+            String encoding = "UTF-8";
+            he.getResponseHeaders().set("Content-Type", "text/html; charset=" + encoding);
+
+            byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+            he.sendResponseHeaders(202, bytes.length);
+
+            OutputStream os = he.getResponseBody();
+            os.write(bytes);
             os.close();
         }
     }
