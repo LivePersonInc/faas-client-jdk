@@ -43,10 +43,9 @@ public class DefaultRestClient implements RestClient {
      */
     private static void sendBody(HttpURLConnection connection, String jsonBody) throws IOException {
         OutputStream outputStream = connection.getOutputStream();
-        DataOutputStream output = new DataOutputStream(outputStream);
-
+        OutputStreamWriter output = new OutputStreamWriter(outputStream, "UTF-8");
         try {
-            output.writeBytes(jsonBody);
+            output.write(jsonBody);
             output.flush();
             output.close();
         } catch (IOException e) {
