@@ -18,7 +18,7 @@ Go to your project's pom.xml file and add as dependency.
 <dependency>
   <groupId>com.liveperson.faas</groupId>
   <artifactId>functions-client</artifactId>
-  <version>1.1.6</version>
+  <version>1.2.2</version>
 </dependency>
 ```
 
@@ -35,10 +35,9 @@ FaasClient.Builder builder = new FaasWebClient.Builder(accountId);
 
 Furthermore you have to choose a method of authorization.
 Either you provide a client secret and client Id, as we use OAuth 2.0 with client credentials by default, 
-or you alternatively pass your own implementation of the `AuthSignatureBilder`.
+or you alternatively pass your own implementation of the `AuthSignatureBuilder` or `AuthDpopSignatureBuilder`.
 
-* [More information on Client Credentials](https://developers.liveperson.com/liveperson-functions-external-invocations-client-credentials.html)
-
+* [More information on Client Credentials](https://developers.liveperson.com/liveperson-functions-foundations-external-invocation.html#authentication)
 
 ```java
 String clientId = "clientId";
@@ -48,6 +47,9 @@ builder.withClientSecret(clientSecret);
 or
 AuthSignatureBuilder authSignatureBuilder = new YourAuthSignatureBuilder();
 builder.withAuthSignatureBuilder(authSignatureBuider);
+or // Oauth2 + DPoP (only for internal usage)
+AuthDPoPSignatureBuilder  authDPoPSignatureBuilder = new YourAuthDPoPSignatureBuilder();
+builder.withAuthDPoPSignatureBuilder(authDPoPSignatureBuilder);
 ```
 
 This is the bare minimum that has to be provided to build the client.
@@ -55,6 +57,10 @@ This is the bare minimum that has to be provided to build the client.
 ```java
 FaasClient faasClient = builder.build();
 ```
+
+### DPoP authorization
+
+The client supports Oauth2+DPoP authorization ONLY FOR INTERNAL USE in service-to-service. You must provide your implementation of the `AuthDPoPSignatureBuilder` during the initialization.
 
 ### Optional fields for builder
 
@@ -139,7 +145,7 @@ optionalParams.setRequestId("requestId");
 ### Fetching lambdas
 
 
-**You have to use your own authentication method when fetching lambdas as it still relies on OAuth 1.0.**
+**You have to use your own authentication method when fetching lambdas as it relies on OAuth 1.0. / Oauth 2.0 + DPoP**
 
 
 <details><summary>Fetching lambdas of account</summary>
