@@ -57,7 +57,7 @@ public class CsdsWebClientTest {
         baseURI.setService(SERVICE);
         // Set private member variables
         new FieldSetter(client, CsdsWebClient.class.getDeclaredField("cachedDomains")).set(baseURIList);
-        new FieldSetter(client, CsdsWebClient.class.getDeclaredField("cacheExpiryDate")).set(LocalDateTime.now().plusHours(2));
+        new FieldSetter(client, CsdsWebClient.class.getDeclaredField("cacheExpiryDate")).set(LocalDateTime.now().plusMinutes(10));
 
         assertEquals(client.getDomain(SERVICE), BASE_URI);
     }
@@ -67,7 +67,7 @@ public class CsdsWebClientTest {
         List<BaseURI> baseURIs = new ArrayList<BaseURI>(Collections.singletonList(baseURI));
         // Set private member variables
         new FieldSetter(client, CsdsWebClient.class.getDeclaredField("cachedDomains")).set(baseURIs);
-        new FieldSetter(client, CsdsWebClient.class.getDeclaredField("cacheExpiryDate")).set(LocalDateTime.now().plusHours(2));
+        new FieldSetter(client, CsdsWebClient.class.getDeclaredField("cacheExpiryDate")).set(LocalDateTime.now().plusMinutes(10));
 
         client.getDomain("doesNotExist");
     }

@@ -33,7 +33,7 @@ public class DefaultIsImplementedCacheTest {
     @Test
     public void getIfCachedAndValidSuccess() throws NoSuchFieldException {
         FaaSEventImplementedExpiry faaSEventImplementedExpiry = new FaaSEventImplementedExpiry();
-        faaSEventImplementedExpiry.setExpirationDate(LocalDateTime.now().plusHours(3));
+        faaSEventImplementedExpiry.setExpirationDate(LocalDateTime.now().plusMinutes(20));
         faaSEventImplementedExpiry.setImplemented(true);
         ConcurrentMap<String, FaaSEventImplementedExpiry> implementationCache = new ConcurrentHashMap<>();
         implementationCache.putIfAbsent(EVENT, faaSEventImplementedExpiry);
