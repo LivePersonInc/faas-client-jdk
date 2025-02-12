@@ -52,7 +52,7 @@ public class CsdsWebClient implements CsdsClient {
                 throw new CsdsRetrievalException("A problem occurred in get request or in parsing of Csds domains", e);
             }
             cachedDomains = baseURIs.getBaseURIs();
-            cacheExpiryDate = (LocalDateTime.now()).plusHours(2);
+            cacheExpiryDate = (LocalDateTime.now()).plusMinutes(10);
             return cachedDomains;
         }
 
