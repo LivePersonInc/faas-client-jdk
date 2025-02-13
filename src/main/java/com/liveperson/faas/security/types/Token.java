@@ -1,5 +1,8 @@
 package com.liveperson.faas.security.types;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Token {
     String access_token;
     String token_type;
