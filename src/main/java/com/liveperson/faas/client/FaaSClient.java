@@ -19,7 +19,7 @@ public interface FaaSClient {
     /**
      * Invoking a lambda per brand via the RESTful api by event ID
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param event          the faas event
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param responseType   the type of the response object
@@ -28,13 +28,13 @@ public interface FaaSClient {
      * @return  the response object of type responseType
      * @throws FaaSException when error occurs during lambda invocation
      */
-    <T> T invokeByEvent(String externalSystem, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
+    <T> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Invoking a lambda per brand via the RESTful api by event ID
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param event          the faas event
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param responseType   the type of the response object
@@ -43,35 +43,35 @@ public interface FaaSClient {
      * @return the response object of type responseType
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    <T> T invokeByEvent(String externalSystem, String event, FaaSInvocation data, Class<T> responseType,
+    <T> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Invoking a lambda per brand via the RESTful api by event ID but does not return response of invocation
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param event          the faas event
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param optionalParams optional Parameters for request - requestId and timeOut
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    void invokeByEvent(String externalSystem, FaaSEvent event, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
+    void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Invoking a lambda per brand via the RESTful api by event ID but does not return response of invocation
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param event          the faas event
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param optionalParams optional Parameters for request - requestId and timeOut
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    void invokeByEvent(String externalSystem, String event, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
+    void invokeByEvent(String lpEventSource, String event, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Invoking a lambda per brand via the RESTful api by lambda UUID
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param lambdaUUID     the global unique identifier of a lambda
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param responseType   the type of the response object
@@ -80,41 +80,41 @@ public interface FaaSClient {
      * @return the response object of type responseType
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    <T> T invokeByUUID(String externalSystem, String lambdaUUID, FaaSInvocation data, Class<T> responseType,
+    <T> T invokeByUUID(String lpEventSource, String lambdaUUID, FaaSInvocation data, Class<T> responseType,
                        OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Invoking a lambda per brand via the RESTful api by lambda UUID but does not return response of invocation
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param lambdaUUID     the global unique identifier of a lambda
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param optionalParams optional Parameters for request - requestId and timeOut
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    void invokeByUUID(String externalSystem, String lambdaUUID, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
+    void invokeByUUID(String lpEventSource, String lambdaUUID, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Checking if lambda implementation exist for a given event
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param event          the faas event
      * @param optionalParams optional Parameters for request - requestId and timeOut
      * @return boolean
      * @throws FaaSException  when error occurs during isImplemented request
      */
-    boolean isImplemented(String externalSystem, FaaSEvent event, OptionalParams optionalParams) throws FaaSException;
+    boolean isImplemented(String lpEventSource, FaaSEvent event, OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Checking if lambda implementation exist for a given event
      *
-     * @param externalSystem the name of the external system doing the invocation
+     * @param lpEventSource the name of the source system doing the invocation
      * @param event          the faas event
      * @param optionalParams optional Parameters for request - requestId and timeOut
      * @return boolean
      * @throws FaaSException when error occurs during isImplemented request
      */
-    boolean isImplemented(String externalSystem, String event, OptionalParams optionalParams) throws FaaSException;
+    boolean isImplemented(String lpEventSource, String event, OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Get a list of lambdas. Filters can be applied by state, eventId or name. EventId and name supports substring.
