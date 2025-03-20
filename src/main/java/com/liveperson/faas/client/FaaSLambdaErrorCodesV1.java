@@ -1,6 +1,6 @@
 package com.liveperson.faas.client;
 
-enum FaaSLambdaErrorCodes {
+enum FaaSLambdaErrorCodesV1 {
     CUSTOM_FAILURE("com.liveperson.faas.handler.custom-failure"),
     RUNTIME_EXCEPTION("com.liveperson.faas.handler.runtime-exception"),
     EXECUTION_WINDOW_EXCEEDED("com.liveperson.faas.handler.executiontime-exceeded"),
@@ -8,7 +8,7 @@ enum FaaSLambdaErrorCodes {
 
     private String code;
 
-    FaaSLambdaErrorCodes(String code) {
+    FaaSLambdaErrorCodesV1(String code) {
         this.code = code;
     }
 
@@ -17,7 +17,7 @@ enum FaaSLambdaErrorCodes {
     }
 
     public static boolean contains(String test) {
-        for (FaaSLambdaErrorCodes c : FaaSLambdaErrorCodes.values()) {
+        for (FaaSLambdaErrorCodesV1 c : FaaSLambdaErrorCodesV1.values()) {
             if (c.getCode().equals(test)) {
                 return true;
             }

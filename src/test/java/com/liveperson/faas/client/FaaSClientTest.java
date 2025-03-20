@@ -267,7 +267,7 @@ public class FaaSClientTest {
                         long timestamp = System.currentTimeMillis();
                         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                         invocationData.setTimestamp(timestamp);
-                        FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(),
+                        FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
                                         "My custom error.");
 
                         when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
@@ -542,7 +542,7 @@ public class FaaSClientTest {
                         long timestamp = System.currentTimeMillis();
                         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                         invocationData.setTimestamp(timestamp);
-                        FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(),
+                        FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
                                         "My custom error.");
 
                         when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
@@ -704,7 +704,7 @@ public class FaaSClientTest {
                 long timestamp = System.currentTimeMillis();
                 FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                 invocationData.setTimestamp(timestamp);
-                FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(), "My custom error.");
+                FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), "My custom error.");
 
                 when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
                                 httpBodyCaptor.capture(), eq(defaultTimeOut)))
