@@ -2,6 +2,9 @@ package com.liveperson.faas.client;
 
 public enum FaaSEvent {
     ChatPostSurveyEmailTranscript("denver_post_survey_email_transcript"),
+    ChatEnd("denver_chat_end"),
+    ChatInQueue("denver_chat_in_queue"),
+    ChatStart("denver_chat_start"),
     ConversationalCommand("conversational_command"),
     MessagingNewConversation("controllerbot_messaging_new_conversation"),
     MessagingConversationEnd("controllerbot_messaging_conversation_end"),
@@ -9,6 +12,10 @@ public enum FaaSEvent {
     MessagingConversationRouting("controllerbot_messaging_conversation_routing"),
     MessagingLineInOffHours("controllerbot_messaging_mid_conversation_msg"),
     MessagingParticipantChange("controllerbot_messaging_participants_change"),
+    MessagingConsumerStepUp("controllerbot_messaging_consumer_step_up"),
+    MessagingConversationAgentIdle("controllerbot_messaging_conversation_agent_idle"),
+    MessagingConversationConsumerIdle("controllerbot_messaging_conversation_consumer_idle"),
+    MessagingConversationStuckQueueIdle("controllerbot_messaging_conversation_stuck_queue_idle"),
     MessagingTTR("controllerbot_messaging_ttr"),
     MessagingSurveyStarted("surveybot_messaging_survey_started"),
     MessagingSurveyEnded("surveybot_messaging_survey_ended"),
