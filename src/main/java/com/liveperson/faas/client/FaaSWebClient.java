@@ -93,16 +93,16 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public <T> T invokeByUUID(String lpEventSource, String lambdaUUID, FaaSInvocation data, Class<T> responseType,
+    public <T> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
-        String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, lambdaUUID);
+        String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
         return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
     @Override
-    public void invokeByUUID(String lpEventSource, String lambdaUUID, FaaSInvocation data,
+    public void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
-        String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, lambdaUUID);
+        String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
         invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
 
     }
@@ -145,6 +145,15 @@ public class FaaSWebClient implements FaaSClient {
     public boolean isImplemented(String lpEventSource, String event, OptionalParams optionalParams)
             throws FaaSException {
         return isEventImplemented(lpEventSource, event, optionalParams);
+    }
+
+    /**
+     *
+     * @throws CsdsRetrievalException
+     */
+    private boolean isV2Domain() throws CsdsRetrievalException {
+        String domain = this.getGWDomain();
+        return domain.contains("fninvocations") || domain.contains("functions");
     }
 
     private boolean isEventImplemented(String lpEventSource, String event, OptionalParams optionalParams)

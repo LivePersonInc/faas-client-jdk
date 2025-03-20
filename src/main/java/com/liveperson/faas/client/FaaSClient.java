@@ -72,7 +72,7 @@ public interface FaaSClient {
      * Invoking a lambda per brand via the RESTful api by lambda UUID
      *
      * @param lpEventSource the name of the source system doing the invocation
-     * @param lambdaUUID     the global unique identifier of a lambda
+     * @param functionUUID     the global unique identifier of a lambda
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param responseType   the type of the response object
      * @param optionalParams optional Parameters for request - requestId and timeOuts
@@ -80,19 +80,19 @@ public interface FaaSClient {
      * @return the response object of type responseType
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    <T> T invokeByUUID(String lpEventSource, String lambdaUUID, FaaSInvocation data, Class<T> responseType,
+    <T> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
                        OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Invoking a lambda per brand via the RESTful api by lambda UUID but does not return response of invocation
      *
      * @param lpEventSource the name of the source system doing the invocation
-     * @param lambdaUUID     the global unique identifier of a lambda
+     * @param functionUUID     the global unique identifier of a lambda
      * @param data           the invocation payload containing timestamp (ms), headers and payload send to the lambda
      * @param optionalParams optional Parameters for request - requestId and timeOut
      * @throws FaaSException  when error occurs during lambda invocation
      */
-    void invokeByUUID(String lpEventSource, String lambdaUUID, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
+    void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, OptionalParams optionalParams) throws FaaSException;
 
     /**
      * Checking if lambda implementation exist for a given event
