@@ -96,14 +96,19 @@ public class FaaSWebClient implements FaaSClient {
     public <T> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
-        return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
+        /*
+         * if(this.isV2Domain()){
+         * return
+         * }
+         */
+        return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
     @Override
     public void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
-        invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
+        invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
 
     }
 
@@ -111,28 +116,28 @@ public class FaaSWebClient implements FaaSClient {
     public <T> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
-        return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
+        return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
     @Override
     public <T> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
-        return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
+        return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
     @Override
     public void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
-        invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
+        invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
 
     @Override
     public void invokeByEvent(String lpEventSource, String event, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
-        invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
+        invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
 
     public boolean isImplemented(String lpEventSource, FaaSEvent event, OptionalParams optionalParams)
@@ -250,7 +255,7 @@ public class FaaSWebClient implements FaaSClient {
         metricCollector.onGetLambdasFailure(userId, stopWatch.getTotalTimeSeconds(), accountId, statusCode, e);
     }
 
-    private <T> T invokeWithUri(String lpEventSource, FaaSInvocation data,
+    private <T> T invokeWithUriV1(String lpEventSource, FaaSInvocation data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -294,7 +299,7 @@ public class FaaSWebClient implements FaaSClient {
         return lambdaOrEventName;
     }
 
-    private void invokeWithUriNoResponse(String lpEventSource, FaaSInvocation data, String invokeUri,
+    private void invokeWithUriNoResponseV1(String lpEventSource, FaaSInvocation data, String invokeUri,
             OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
