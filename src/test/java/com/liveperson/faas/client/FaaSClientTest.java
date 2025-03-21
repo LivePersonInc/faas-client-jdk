@@ -298,6 +298,7 @@ public class FaaSClientTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Test(expected = FaaSException.class)
     public void invokeViaUUIDThrowsFaaSException() throws IOException, FaaSException {
         try {
@@ -314,6 +315,272 @@ public class FaaSClientTest {
                     eq(accountId), eq(-1), any());
             throw ex;
 
+        }
+    }
+
+    @Test
+    public void invokeViaEventType() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp,
+                headers);
+        EventResponse expectedResponse = getExpectedResponse();
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(lpEventSource,
+                FaaSEvent.ChatPostSurveyEmailTranscript,
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyInt(),
+                eq(event.toString()),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp,
+                        "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                                "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+        assertTrue(httpHeaderCaptor.getValue().get(
+                "LP-EventSource").contains(lpEventSource));
+    }
+
+    @Test
+    public void invokeViaEventTypeWithAuthDPoP() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp,
+                headers);
+        EventResponse expectedResponse = getExpectedResponse();
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = clientWithDPoP.invokeByEvent(lpEventSource,
+                FaaSEvent.ChatPostSurveyEmailTranscript,
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyInt(),
+                eq(event.toString()),
+                eq(accountId));
+        verify(authDPoPSignatureBuilder, times(1)).getAccessTokenInternal(eq("https://" + faasGWUrl));
+        verify(authDPoPSignatureBuilder, times(1)).getDpopHeaderInternal(
+                eq(getExpectedInvokeEventUrl()),
+                eq("POST"), eq(accessToken));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp,
+                        "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                                "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header",
+                httpHeaderCaptor.getValue().get("Authorization").equals("DPoP " + accessToken));
+        assertTrue("Lambda invocation with wrong DPoP header",
+                httpHeaderCaptor.getValue().get("DPoP").equals(dpopHeader));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+        assertTrue(httpHeaderCaptor.getValue().get(
+                "LP-EventSource").contains(lpEventSource));
+    }
+
+    @Test
+    public void invokeViaEventTypeWithEventString() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp,
+                headers);
+        EventResponse expectedResponse = getExpectedResponse();
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(lpEventSource,
+                FaaSEvent.ChatPostSurveyEmailTranscript.toString(),
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyInt(),
+                eq(event.toString()),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp,
+                        "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                                "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+        assertTrue(httpHeaderCaptor.getValue().get(
+                "LP-EventSource").contains(lpEventSource));
+    }
+
+    @Test
+    public void invokeViaEventTypeWithEventStringWithRequestId() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp,
+                headers);
+        EventResponse expectedResponse = getExpectedResponse();
+        optionalParams.setRequestId(requestId);
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(lpEventSource,
+                FaaSEvent.ChatPostSurveyEmailTranscript.toString(),
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyInt(),
+                eq(event.toString()),
+                eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp,
+                        "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                                "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+        assertTrue(httpHeaderCaptor.getValue().get(
+                "LP-EventSource").contains(lpEventSource));
+    }
+
+    @Test
+    public void invokeViaEventTypeWithRequestId() throws Exception {
+        UUIDResponse payload = new UUIDResponse();
+        payload.key = "requestKey";
+        payload.value = "requestValue";
+        long timestamp = System.currentTimeMillis();
+        String mockResponse = "[\n" +
+                "  {\n" +
+                "    \"uuid\": \"" + lambdaUUID + "\",\n" +
+                "    \"timestamp\": \"2017-07-09\",\n" +
+                "    \"result\": {\n" +
+                "      \"key\": \"responseKey\",\n" +
+                "      \"value\": \"responseValue\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Map<String, String> headers = getTestHeaders();
+        FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(payload, timestamp,
+                headers);
+        EventResponse expectedResponse = getExpectedResponse();
+        optionalParams.setRequestId(requestId);
+
+        when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                httpBodyCaptor.capture(), eq(defaultTimeOut))).thenReturn(mockResponse);
+        EventResponse[] response = client.invokeByEvent(lpEventSource,
+                FaaSEvent.ChatPostSurveyEmailTranscript,
+                invocationData, EventResponse[].class, optionalParams);
+
+        verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyFloat(),
+                eq(event.toString()), eq(accountId));
+        assertEquals("Lambda invocation with the wrong body",
+                getExpectedRequestBody(timestamp,
+                        "[{\"key\":\"testHeader\",\"value\":\"testHeaderValue\"}]", "{\"key" +
+                                "\":\"requestKey\",\"value\":\"requestValue\"}"),
+                httpBodyCaptor.getValue());
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "Authorization").contains("Bearer"));
+        assertTrue("Lambda invocation with wrong authorization header", httpHeaderCaptor.getValue().get(
+                "X-REQUEST-ID").contains(requestId));
+        assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
+                response[0].toString());
+        assertTrue(httpHeaderCaptor.getValue().get(
+                "LP-EventSource").contains(lpEventSource));
+    }
+
+    @Test(expected = FaaSException.class)
+    public void invokeViaEventTypeThrowFaaSException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+
+            when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(new IOException("Error during rest call."));
+            client.invokeByEvent(lpEventSource, event, invocationData, EventResponse[].class,
+                    optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByEventFailure(eq(lpEventSource), anyFloat(),
+                    eq(event.toString()), eq(accountId), eq(-1), any());
+            throw ex;
+        }
+    }
+
+    @Test(expected = FaaSLambdaException.class)
+    public void invokeViaEventTypeThrowsFaaSLambdaException() throws IOException, FaaSException {
+        try {
+            long timestamp = System.currentTimeMillis();
+            FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
+            invocationData.setTimestamp(timestamp);
+            FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+                    "My custom error.");
+
+            when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
+                    httpBodyCaptor.capture(), eq(defaultTimeOut)))
+                    .thenThrow(new RestException("Error during rest call.",
+                            objectMapper.writeValueAsString(faaSError),
+                            500));
+            client.invokeByEvent(lpEventSource, event, invocationData, EventResponse[].class,
+                    optionalParams);
+        } catch (Exception ex) {
+            verify(metricCollectorMock, times(1)).onInvokeByEventFailure(eq(lpEventSource), anyFloat(),
+                    eq(event.toString()), eq(accountId), eq(500), any());
+            throw ex;
         }
     }
 

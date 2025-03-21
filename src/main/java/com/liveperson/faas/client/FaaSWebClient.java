@@ -129,6 +129,14 @@ public class FaaSWebClient implements FaaSClient {
     public <T> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        try {
+            if (this.isV2Domain()) {
+                return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
         return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
@@ -136,6 +144,14 @@ public class FaaSWebClient implements FaaSClient {
     public <T> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        try {
+            if (this.isV2Domain()) {
+                return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
         return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
@@ -143,6 +159,15 @@ public class FaaSWebClient implements FaaSClient {
     public void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        try {
+            if (this.isV2Domain()) {
+                invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
+                return;
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
         invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
 
@@ -150,6 +175,15 @@ public class FaaSWebClient implements FaaSClient {
     public void invokeByEvent(String lpEventSource, String event, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
+        try {
+            if (this.isV2Domain()) {
+                invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
+                return;
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
         invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
 
