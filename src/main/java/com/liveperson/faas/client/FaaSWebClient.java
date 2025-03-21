@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -97,16 +98,13 @@ public class FaaSWebClient implements FaaSClient {
     public <T> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
-        Boolean isV2 = false;
         try {
-            isV2 = this.isV2Domain();
-            if (isV2) {
+            if (this.isV2Domain()) {
                 return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
             throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
-
         }
         return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
@@ -115,6 +113,15 @@ public class FaaSWebClient implements FaaSClient {
     public void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
+        try {
+            if (this.isV2Domain()) {
+                invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
+                return;
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
         invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
 
@@ -319,12 +326,12 @@ public class FaaSWebClient implements FaaSClient {
         try {
             isLambda = invokeUri.contains("lambdas");
             lambdaOrEventName = extractLambdaOrEventName(invokeUri);
-            url = buildGWDomainUrl( invokeUri);
+            url = buildGWDomainUrl(invokeUri);
 
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.POST.name());
 
-            headers.put("LP-EventSource", lpEventSource); // Only for V2
+            headers.put("LP-EventSource", lpEventSource); // TODO: add to generate Request Headers
 
             logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
             String response = restClient.post(url, headers, data.toString(),
@@ -350,6 +357,43 @@ public class FaaSWebClient implements FaaSClient {
         String[] invokeUriSplit = invokeUri.split("/");
         String lambdaOrEventName = invokeUriSplit[invokeUriSplit.length - 2];
         return lambdaOrEventName;
+    }
+
+    private void invokeWithUriNoResponse(String lpEventSource, FaaSInvocation data, String invokeUri,
+            OptionalParams optionalParams) throws FaaSException {
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
+                : optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        boolean isLambda = true;
+        String lambdaOrEventName = "";
+        String url = "unresolved";
+        try {
+            isLambda = invokeUri.contains("lambdas");
+            lambdaOrEventName = extractLambdaOrEventName(invokeUri);
+            url = buildGWDomainUrl(invokeUri);
+
+            Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
+                    HttpMethod.POST.name());
+
+            headers.put("LP-EventSource", lpEventSource); // TODO: add to generate Request Headers
+
+            logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
+            restClient.post(url, headers, data.toString(), timeOutInMs);
+            collectMetricsForSuccessfulInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName);
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            collectMetricsForFailedInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName, e,
+                    e.getStatusCode());
+            throw handleFaaSInvocationException(e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsForFailedInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName, e, -1);
+            throw new FaaSException("Error occured during lambda invocation", e);
+        }
     }
 
     private void invokeWithUriNoResponseV1(String lpEventSource, FaaSInvocation data, String invokeUri,
