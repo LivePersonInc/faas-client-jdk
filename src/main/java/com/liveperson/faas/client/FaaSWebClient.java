@@ -262,7 +262,7 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     /**
-     * @deprecated  will be removed once V1 is not available
+     * @deprecated will be removed once V1 is not available
      */
     @Deprecated
     private <T> T invokeWithUriV1(String lpEventSource, FaaSInvocation data,
@@ -323,6 +323,8 @@ public class FaaSWebClient implements FaaSClient {
 
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.POST.name());
+
+            headers.put("LP-EventSource", lpEventSource); // Only for V2
 
             logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
             String response = restClient.post(url, headers, data.toString(),
