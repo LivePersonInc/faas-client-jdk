@@ -7,7 +7,7 @@ import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsClient;
 import com.liveperson.faas.csds.CsdsMapClient;
 import com.liveperson.faas.csds.CsdsWebClient;
-import com.liveperson.faas.dto.FaaSError;
+import com.liveperson.faas.dto.FaaSErrorV1;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.DefaultRestClient;
@@ -241,7 +241,7 @@ public class FaaSWebClient implements FaaSClient {
         } catch (RestException e) {
             logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
                     e.getMessage()));
-            FaaSError faaSError = getFaaSError(e);
+            FaaSErrorV1 faaSError = getFaaSError(e);
             collectMetricsIsImplementedFails(lpEventSource, event, stopWatch, e,
                     e.getStatusCode());
             throw new FaaSDetailedException(faaSError, e);
@@ -286,7 +286,7 @@ public class FaaSWebClient implements FaaSClient {
             logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
                     e.getMessage()));
             collectMetricsGetLambdasFails(userId, stopWatch, e.getStatusCode(), e);
-            FaaSError faaSError = this.getFaaSError(e);
+            FaaSErrorV1 faaSError = this.getFaaSError(e);
             throw new FaaSDetailedException(faaSError, e);
         } catch (Exception e) {
             logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
@@ -335,7 +335,7 @@ public class FaaSWebClient implements FaaSClient {
                     e.getMessage()));
             collectMetricsForFailedInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName, e,
                     e.getStatusCode());
-            throw handleFaaSInvocationException(e);
+            throw handleFaaSInvocationExceptionV1(e);
         } catch (Exception e) {
             logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
                     e.getMessage()));
@@ -378,7 +378,7 @@ public class FaaSWebClient implements FaaSClient {
                     e.getMessage()));
             collectMetricsForFailedInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName, e,
                     e.getStatusCode());
-            throw handleFaaSInvocationException(e);
+            throw handleFaaSInvocationExceptionV1(e);
         } catch (Exception e) {
             logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
                     e.getMessage()));
@@ -421,7 +421,7 @@ public class FaaSWebClient implements FaaSClient {
                     e.getMessage()));
             collectMetricsForFailedInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName, e,
                     e.getStatusCode());
-            throw handleFaaSInvocationException(e);
+            throw handleFaaSInvocationExceptionV1(e);
         } catch (Exception e) {
             logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
                     e.getMessage()));
@@ -456,7 +456,7 @@ public class FaaSWebClient implements FaaSClient {
                     e.getMessage()));
             collectMetricsForFailedInvocation(lpEventSource, stopWatch, isLambda, lambdaOrEventName, e,
                     e.getStatusCode());
-            throw handleFaaSInvocationException(e);
+            throw handleFaaSInvocationExceptionV1(e);
         } catch (Exception e) {
             logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
                     e.getMessage()));
@@ -527,17 +527,17 @@ public class FaaSWebClient implements FaaSClient {
         return uriComponents.toUriString();
     }
 
-    private FaaSException handleFaaSInvocationException(RestException e) throws FaaSException {
-        FaaSError faaSError = this.getFaaSError(e);
+    private FaaSException handleFaaSInvocationExceptionV1(RestException e) throws FaaSException {
+        FaaSErrorV1 faaSError = this.getFaaSError(e);
         if (FaaSLambdaErrorCodesV1.contains(faaSError.getErrorCode()))
             throw new FaaSLambdaException(faaSError, e);
 
         throw new FaaSDetailedException(faaSError, e);
     }
 
-    private FaaSError getFaaSError(RestException e) throws FaaSException {
+    private FaaSErrorV1 getFaaSError(RestException e) throws FaaSException {
         try {
-            return objectMapper.readValue(e.getResponse(), FaaSError.class);
+            return objectMapper.readValue(e.getResponse(), FaaSErrorV1.class);
         } catch (IOException ex) {
             throw new FaaSException("Error occured during lambda invocation", ex);
         }

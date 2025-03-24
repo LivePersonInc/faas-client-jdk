@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liveperson.faas.client.types.FaaSEventImplementedExpiry;
 import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsClient;
-import com.liveperson.faas.dto.FaaSError;
+import com.liveperson.faas.dto.FaaSErrorV1;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.RestClient;
@@ -255,7 +255,7 @@ public class FaaSClientTest {
     @Test(expected = FaaSDetailedException.class)
     public void invokeViaUUIDThrowsFaasDetailedException() throws IOException, FaaSException {
         try {
-            FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+            FaaSErrorV1 faaSError = new FaaSErrorV1("faas.error.code", "My custom error.");
             RestException exception = new RestException("Error during rest call.",
                     objectMapper.writeValueAsString(faaSError),
                     500);
@@ -281,7 +281,7 @@ public class FaaSClientTest {
             long timestamp = System.currentTimeMillis();
             FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
             invocationData.setTimestamp(timestamp);
-            FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+            FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
                     "My custom error.");
 
             when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
@@ -567,7 +567,7 @@ public class FaaSClientTest {
             long timestamp = System.currentTimeMillis();
             FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
             invocationData.setTimestamp(timestamp);
-            FaaSError faaSError = new FaaSError(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+            FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
                     "My custom error.");
 
             when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),

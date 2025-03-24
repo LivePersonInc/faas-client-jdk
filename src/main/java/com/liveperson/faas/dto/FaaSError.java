@@ -1,36 +1,35 @@
 package com.liveperson.faas.dto;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.Objects;
 
-@JsonIgnoreProperties(value = {"errorLogs"})
+/**
+ * V2 FaaS error
+ */
 public class FaaSError {
-    private String errorCode;
-    private String errorMsg;
+    private String code;
+    private String message;
 
     public FaaSError() {
     }
 
-    public FaaSError(String errorCode, String errorMsg) {
-        this.errorCode = errorCode;
-        this.errorMsg = errorMsg;
+    public FaaSError(String code, String message) {
+        this.code = code;
+        this.message = message;
     }
 
     public String getErrorCode() {
-        return errorCode;
+        return code;
     }
 
     public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
+        this.code = errorCode;
     }
 
     public String getErrorMsg() {
-        return errorMsg;
+        return message;
     }
 
-    public void setErrorMsg(String errorMsg) {
-        this.errorMsg = errorMsg;
+    public void setErrorMsg(String message) {
+        this.message = message;
     }
 
     @Override
@@ -38,20 +37,20 @@ public class FaaSError {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FaaSError faaSError = (FaaSError) o;
-        return Objects.equals(errorCode, faaSError.errorCode) &&
-                Objects.equals(errorMsg, faaSError.errorMsg);
+        return Objects.equals(code, faaSError.code) &&
+                Objects.equals(message, faaSError.message);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(errorCode, errorMsg);
+        return Objects.hash(code, message);
     }
 
     @Override
     public String toString() {
         return "FaaSError{" +
-                "errorCode='" + errorCode + '\'' +
-                ", errorMsg='" + errorMsg + '\'' +
+                "errorCode='" + code + '\'' +
+                ", errorMsg='" + message + '\'' +
                 '}';
     }
 }

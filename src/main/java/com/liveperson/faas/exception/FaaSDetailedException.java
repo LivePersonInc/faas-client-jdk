@@ -1,11 +1,11 @@
 package com.liveperson.faas.exception;
 
-import com.liveperson.faas.dto.FaaSError;
+import com.liveperson.faas.dto.FaaSErrorV1;
 
 public class FaaSDetailedException extends FaaSException {
-    FaaSError faaSError;
+    FaaSErrorV1 faaSError;
 
-    public FaaSDetailedException(FaaSError faaSError, RestException cause){
+    public FaaSDetailedException(FaaSErrorV1 faaSError, RestException cause){
         super(faaSError.toString(), cause);
 
         this.faaSError = faaSError;
@@ -16,7 +16,7 @@ public class FaaSDetailedException extends FaaSException {
         return (RestException) super.getCause();
     }
 
-    public FaaSError getFaaSError() {
+    public FaaSErrorV1 getFaaSError() {
         return faaSError;
     }
 }
