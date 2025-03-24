@@ -232,7 +232,7 @@ public class FaaSIntegrationClientTestV1 {
 
 }
 
-class AuthSignature implements AuthSignatureBuilder {
+class AuthSignatureV1 implements AuthSignatureBuilder {
 
     private DefaultRestClient restClient = new DefaultRestClient();
     private CsdsMapClient csdsClient = new CsdsMapClient(getAlphaDomains());
@@ -243,7 +243,7 @@ class AuthSignature implements AuthSignatureBuilder {
     private BearerConfigResponseObject configData;
     private String authHeader;
 
-    public AuthSignature() throws TokenGenerationException {
+    public AuthSignatureV1() throws TokenGenerationException {
         String env = System.getenv("ENV");
         if (env != "prod") {
             Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();

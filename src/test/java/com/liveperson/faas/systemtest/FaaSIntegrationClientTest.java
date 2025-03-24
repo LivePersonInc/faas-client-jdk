@@ -36,7 +36,7 @@ import static org.junit.Assert.assertTrue;
  * V2
  */
 public class FaaSIntegrationClientTest {
-    private static AuthSignature authSignatureBuilder;
+    private static AuthSignatureV1 authSignatureBuilder;
     private FaaSWebClient client;
     private FaaSWebClient clientWithBearer;
     private DefaultRestClient restClient = new DefaultRestClient();
@@ -66,7 +66,7 @@ public class FaaSIntegrationClientTest {
             lambdaUUID = dotenv.get("LAMBDA_UUID");
         }
         client = getFaaSClient();
-        authSignatureBuilder = new AuthSignature();
+        authSignatureBuilder = new AuthSignatureV1();
         clientWithBearer = getFaaSClientBearer();
         optionalParams = new OptionalParams();
         optionalParams.setTimeOutInMs(defaultTimeOut);
@@ -186,8 +186,8 @@ public class FaaSIntegrationClientTest {
         assertEquals("success", response);
     }
 
-    @Test(expected = FaaSDetailedException.class)
-    public void invokeViaUUIDThrowsFaasDetailedException() throws FaaSException, FaaSDetailedException {
+    @Test(expected = FaaSDetailedExceptionV1.class)
+    public void invokeViaUUIDThrowsFaasDetailedException() throws FaaSException, FaaSDetailedExceptionV1 {
         long timestamp = System.currentTimeMillis();
         Map<String, String> headers = getTestHeaders("error");
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(headers, "error");
@@ -195,7 +195,7 @@ public class FaaSIntegrationClientTest {
         try {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         } catch (FaaSDetailedException e) {
-            assertEquals(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), e.getFaaSError().getErrorCode());
+            assertEquals(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), e.getFaaSError().getCode());
             assertEquals(901, e.getCause().getStatusCode());
             throw e;
         }

@@ -16,19 +16,19 @@ public class FaaSError {
         this.message = message;
     }
 
-    public String getErrorCode() {
+    public String getCode() {
         return code;
     }
 
-    public void setErrorCode(String errorCode) {
-        this.code = errorCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
-    public String getErrorMsg() {
+    public String getMessage() {
         return message;
     }
 
-    public void setErrorMsg(String message) {
+    public void setMessage(String message) {
         this.message = message;
     }
 
@@ -49,8 +49,8 @@ public class FaaSError {
     @Override
     public String toString() {
         return "FaaSError{" +
-                "errorCode='" + code + '\'' +
-                ", errorMsg='" + message + '\'' +
+                "code='" + code + '\'' +
+                ", message='" + message + '\'' +
                 '}';
     }
 }

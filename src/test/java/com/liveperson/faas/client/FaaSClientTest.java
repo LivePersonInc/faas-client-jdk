@@ -252,7 +252,7 @@ public class FaaSClientTest {
                 response.toString());
     }
 
-    @Test(expected = FaaSDetailedException.class)
+    @Test(expected = FaaSDetailedExceptionV1.class)
     public void invokeViaUUIDThrowsFaasDetailedException() throws IOException, FaaSException {
         try {
             FaaSErrorV1 faaSError = new FaaSErrorV1("faas.error.code", "My custom error.");
@@ -275,7 +275,7 @@ public class FaaSClientTest {
         }
     }
 
-    @Test(expected = FaaSLambdaException.class)
+    @Test(expected = FaaSLambdaExceptionV1.class)
     public void invokeViaUUIDThrowFaaSLambdaException() throws IOException, FaaSException {
         try {
             long timestamp = System.currentTimeMillis();
@@ -561,7 +561,7 @@ public class FaaSClientTest {
         }
     }
 
-    @Test(expected = FaaSLambdaException.class)
+    @Test(expected = FaaSLambdaExceptionV1.class)
     public void invokeViaEventTypeThrowsFaaSLambdaException() throws IOException, FaaSException {
         try {
             long timestamp = System.currentTimeMillis();

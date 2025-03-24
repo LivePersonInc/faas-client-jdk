@@ -14,7 +14,7 @@ public class FaaSDetailedExceptionTest {
         FaaSErrorV1 faaSError = new FaaSErrorV1("faas.error.code", "My custom error.");
         RestException restException = new RestException("Oops", "Oops", 500);
 
-        FaaSDetailedException e = new FaaSDetailedException(faaSError, restException);
+        FaaSDetailedExceptionV1 e = new FaaSDetailedExceptionV1(faaSError, restException);
 
         assertEquals(faaSError, e.getFaaSError());
         assertEquals(e.getCause().getResponse(), restException.getResponse());
