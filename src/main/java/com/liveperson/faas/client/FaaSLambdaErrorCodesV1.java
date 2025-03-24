@@ -1,6 +1,6 @@
 package com.liveperson.faas.client;
 
-enum FaaSLambdaErrorCodesV1 {
+public enum FaaSLambdaErrorCodesV1 {
     CUSTOM_FAILURE("com.liveperson.faas.handler.custom-failure"),
     RUNTIME_EXCEPTION("com.liveperson.faas.handler.runtime-exception"),
     EXECUTION_WINDOW_EXCEEDED("com.liveperson.faas.handler.executiontime-exceeded"),

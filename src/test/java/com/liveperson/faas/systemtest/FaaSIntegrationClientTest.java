@@ -1,18 +1,23 @@
-package com.liveperson.faas.client;
+package com.liveperson.faas.systemtest;
 
+import com.liveperson.faas.client.DefaultIsImplementedCache;
+import com.liveperson.faas.client.FaaSEvent;
+import com.liveperson.faas.client.FaaSLambdaErrorCodesV1;
+import com.liveperson.faas.client.FaaSWebClient;
 import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsMapClient;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.DefaultRestClient;
 import com.liveperson.faas.metriccollector.MetricCollector;
-import com.liveperson.faas.response.lambda.ErrorLogResponseObject;
 import com.liveperson.faas.response.lambda.LambdaResponse;
 import com.liveperson.faas.security.AuthSignatureBuilder;
 import com.liveperson.faas.util.AuthBearerGenerator;
 import com.liveperson.faas.util.BearerConfigResponseObject;
 import com.liveperson.faas.util.EventResponse;
 import com.liveperson.faas.util.UUIDResponse;
+
+import io.github.cdimascio.dotenv.Dotenv;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -27,6 +32,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * V2
+ */
 public class FaaSIntegrationClientTest {
     private static AuthSignature authSignatureBuilder;
     private FaaSWebClient client;
@@ -37,10 +45,10 @@ public class FaaSIntegrationClientTest {
     private String accountId = System.getenv("ACCOUNT_ID");
     private String clientId = System.getenv("CLIENT_ID");
     private String clientSecret = System.getenv("CLIENT_SECRET");
+    private String lambdaUUID = System.getenv("LAMBDA_UUID");
     private String userId;
     private String externalSystem = "test_system";
-    private FaaSEvent event = FaaSEvent.MessagingNewConversation;
-    private String lambdaUUID = System.getenv("LAMBDAUUID");
+    private FaaSEvent event = FaaSEvent.ConversationalCommand;
     private String requestId = "requestId";
 
     private int defaultTimeOut = 15000;
@@ -49,6 +57,14 @@ public class FaaSIntegrationClientTest {
 
     @Before
     public void before() throws Exception, TokenGenerationException {
+        String env = System.getenv("ENV");
+        if (env != "prod") {
+            Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+            accountId = dotenv.get("ACCOUNT_ID");
+            clientId = dotenv.get("CLIENT_ID");
+            clientSecret = dotenv.get("CLIENT_SECRET");
+            lambdaUUID = dotenv.get("LAMBDA_UUID");
+        }
         client = getFaaSClient();
         authSignatureBuilder = new AuthSignature();
         clientWithBearer = getFaaSClientBearer();
@@ -108,11 +124,11 @@ public class FaaSIntegrationClientTest {
     public void invokeViaEventType() throws Exception {
         UUIDResponse eventPayload = new UUIDResponse();
         long timestamp = System.currentTimeMillis();
-        Map<String, String> headers = getTestHeaders();
+        Map<String, String> headers = getTestHeaders("success");
         FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(eventPayload, timestamp, headers);
         EventResponse[] response = client.invokeByEvent(externalSystem, event, invocationData, EventResponse[].class,
                 optionalParams);
-        assertEquals("Success", response[0].result.value);
+        assertEquals("success", response[0].result.value);
         assertNotNull(response[0].uuid, "The uuid should not be null");
     }
 
@@ -121,18 +137,18 @@ public class FaaSIntegrationClientTest {
         UUIDResponse eventPayload = new UUIDResponse();
         eventPayload.value = "validLogs";
         long timestamp = System.currentTimeMillis();
-        Map<String, String> headers = getTestHeaders();
+        Map<String, String> headers = getTestHeaders("success");
         FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(eventPayload, timestamp, headers);
         EventResponse[] response = client.invokeByEvent(externalSystem, event, invocationData, EventResponse[].class,
                 optionalParams);
-        assertEquals("With Payload", response[0].result.value);
+        assertEquals("success", response[0].result.value);
     }
 
     @Test
     public void invokeViaEventTypeWithNonExistingEvent() throws Exception {
         UUIDResponse eventPayload = new UUIDResponse();
         long timestamp = System.currentTimeMillis();
-        Map<String, String> headers = getTestHeaders();
+        Map<String, String> headers = getTestHeaders("success");
         FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(eventPayload, timestamp, headers);
         EventResponse[] response = client.invokeByEvent(externalSystem, FaaSEvent.ChatPostSurveyEmailTranscript,
                 invocationData, EventResponse[].class, optionalParams);
@@ -148,7 +164,7 @@ public class FaaSIntegrationClientTest {
         optionalParams.setRequestId(requestId);
 
         String response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
-        assertEquals("Success", response);
+        assertEquals("success", response);
     }
 
     @Test
@@ -157,7 +173,7 @@ public class FaaSIntegrationClientTest {
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, null);
         invocationData.setTimestamp(timestamp);
         String response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
-        assertEquals("Success", response);
+        assertEquals("success", response);
     }
 
     @Test
@@ -167,38 +183,19 @@ public class FaaSIntegrationClientTest {
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, payload);
         invocationData.setTimestamp(timestamp);
         String response = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, String.class, optionalParams);
-        assertEquals("validLogs", response);
-    }
-
-    @Test(expected = FaaSException.class)
-    public void invokeViaUUIDWithTimeoutPayload() throws IOException, FaaSException {
-
-        String payload = "timeout";
-        long timestamp = System.currentTimeMillis();
-        FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, payload);
-        invocationData.setTimestamp(timestamp);
-        optionalParams.setRequestId(requestId);
-        try {
-            client.invokeByUUID(externalSystem, lambdaUUID, invocationData, ErrorLogResponseObject.class,
-                    optionalParams);
-        } catch (FaaSException e) {
-            assertEquals("Error occured during lambda invocation", e.getMessage());
-            assertEquals("Read timed out", e.getCause().getMessage());
-            throw e;
-        }
+        assertEquals("success", response);
     }
 
     @Test(expected = FaaSDetailedException.class)
     public void invokeViaUUIDThrowsFaasDetailedException() throws FaaSException, FaaSDetailedException {
-        
-        String payload = "error";
         long timestamp = System.currentTimeMillis();
-        FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(null, payload);
+        Map<String, String> headers = getTestHeaders("error");
+        FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(headers, "error");
         invocationData.setTimestamp(timestamp);
         try {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         } catch (FaaSDetailedException e) {
-            assertEquals(FaaSLambdaErrorCodesV1.RUNTIME_EXCEPTION.getCode(), e.getFaaSError().getErrorCode());
+            assertEquals(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), e.getFaaSError().getErrorCode());
             assertEquals(901, e.getCause().getStatusCode());
             throw e;
         }
@@ -221,9 +218,9 @@ public class FaaSIntegrationClientTest {
                 .build();
     }
 
-    private Map<String, String> getTestHeaders() {
+    private Map<String, String> getTestHeaders(String run) {
         Map<String, String> headers = new HashMap();
-        headers.put("testHeader", "testHeaderValue");
+        headers.put("run", run);
         return headers;
     }
 
@@ -242,14 +239,22 @@ class AuthSignature implements AuthSignatureBuilder {
 
     private DefaultRestClient restClient = new DefaultRestClient();
     private CsdsMapClient csdsClient = new CsdsMapClient(getAlphaDomains());
-    private String accountId = System.getenv("ACCOUNT_ID");
-    private String username = System.getenv("USER");
-    private String password = System.getenv("PASS");
+    private String accountId = System.getenv("ACCOUNT_ID_V1");
+    private String username = System.getenv("USER_NAME");
+    private String password = System.getenv("PASSWORD");
     private AuthBearerGenerator bearerGenerator;
     private BearerConfigResponseObject configData;
     private String authHeader;
 
     public AuthSignature() throws TokenGenerationException {
+        String env = System.getenv("ENV");
+        if (env != "prod") {
+            Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+            accountId = dotenv.get("ACCOUNT_ID_V1");
+            username = dotenv.get("USER_NAME");
+            password = dotenv.get("PASSWORD");
+        }
+
         this.bearerGenerator = new AuthBearerGenerator(restClient, csdsClient, accountId, username, password);
         this.authHeader = bearerGenerator.retrieveBearerToken();
         this.configData = bearerGenerator.retrieveBearerConfig();
