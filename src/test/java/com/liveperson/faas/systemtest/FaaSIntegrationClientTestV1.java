@@ -191,7 +191,7 @@ public class FaaSIntegrationClientTestV1 {
         invocationData.setTimestamp(timestamp);
         try {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
-        } catch (FaaSDetailedException e) {
+        } catch (FaaSDetailedExceptionV1 e) {
             assertEquals(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), e.getFaaSError().getErrorCode());
             assertEquals(901, e.getCause().getStatusCode());
             throw e;

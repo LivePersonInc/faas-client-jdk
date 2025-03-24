@@ -538,7 +538,7 @@ public class FaaSWebClient implements FaaSClient {
 
     private FaaSException handleFaaSInvocationException(RestException e) throws FaaSException {
         FaaSError faaSError = this.getFaaSError(e);
-        if (FaaSLambdaErrorCodesV1.contains(faaSError.getCode()))
+        if (FaaSFunctionErrorCodes.contains(faaSError.getCode()))
             throw new FaaSLambdaException(faaSError, e);
 
         throw new FaaSDetailedException(faaSError, e);

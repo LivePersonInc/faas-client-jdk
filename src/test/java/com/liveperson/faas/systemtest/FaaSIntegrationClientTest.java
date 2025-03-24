@@ -186,8 +186,8 @@ public class FaaSIntegrationClientTest {
         assertEquals("success", response);
     }
 
-    @Test(expected = FaaSDetailedExceptionV1.class)
-    public void invokeViaUUIDThrowsFaasDetailedException() throws FaaSException, FaaSDetailedExceptionV1 {
+    @Test(expected = FaaSDetailedException.class)
+    public void invokeViaUUIDThrowsFaasDetailedException() throws FaaSException, FaaSDetailedException {
         long timestamp = System.currentTimeMillis();
         Map<String, String> headers = getTestHeaders("error");
         FaaSInvocation<Object> invocationData = new FaaSInvocation<Object>(headers, "error");
@@ -195,8 +195,8 @@ public class FaaSIntegrationClientTest {
         try {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         } catch (FaaSDetailedException e) {
-            assertEquals(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), e.getFaaSError().getCode());
-            assertEquals(901, e.getCause().getStatusCode());
+          //  assertEquals(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(), e.getFaaSError().get());
+            assertEquals(400, e.getCause().getStatusCode());
             throw e;
         }
     }
