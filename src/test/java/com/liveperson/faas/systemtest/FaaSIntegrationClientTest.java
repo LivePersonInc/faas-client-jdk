@@ -144,15 +144,21 @@ public class FaaSIntegrationClientTest {
         assertEquals("success", response[0].result.value);
     }
 
-    @Test
+
+    // Please Note that in V1 it wont throw if event does not exist
+    @Test(expected = FaaSDetailedException.class)
     public void invokeViaEventTypeWithNonExistingEvent() throws Exception {
         UUIDResponse eventPayload = new UUIDResponse();
         long timestamp = System.currentTimeMillis();
         Map<String, String> headers = getTestHeaders("success");
         FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(eventPayload, timestamp, headers);
-        EventResponse[] response = client.invokeByEvent(externalSystem, FaaSEvent.ChatPostSurveyEmailTranscript,
-                invocationData, EventResponse[].class, optionalParams);
-        assertTrue(response.length == 0);
+        try{
+            client.invokeByEvent(externalSystem, FaaSEvent.ChatPostSurveyEmailTranscript,
+            invocationData, EventResponse[].class, optionalParams);
+        } catch(FaaSDetailedException e){
+            assertEquals(404, e.getCause().getStatusCode());
+            throw e;
+        }        
     }
 
     @Test
@@ -196,7 +202,7 @@ public class FaaSIntegrationClientTest {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         } catch (FaaSDetailedException e) {
           //  assertEquals(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(), e.getFaaSError().get());
-            assertEquals(400, e.getCause().getStatusCode());
+            assertEquals(901, e.getCause().getStatusCode());
             throw e;
         }
     }
