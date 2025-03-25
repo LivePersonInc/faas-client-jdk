@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liveperson.faas.client.types.FaaSEventImplementedExpiry;
 import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsClient;
+import com.liveperson.faas.dto.FaaSError;
 import com.liveperson.faas.dto.FaaSErrorV1;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.*;
@@ -252,10 +253,10 @@ public class FaaSClientTest {
                 response.toString());
     }
 
-    @Test(expected = FaaSDetailedExceptionV1.class)
+    @Test(expected = FaaSDetailedException.class)
     public void invokeViaUUIDThrowsFaasDetailedException() throws IOException, FaaSException {
         try {
-            FaaSErrorV1 faaSError = new FaaSErrorV1("faas.error.code", "My custom error.");
+            FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
             RestException exception = new RestException("Error during rest call.",
                     objectMapper.writeValueAsString(faaSError),
                     500);
@@ -275,13 +276,13 @@ public class FaaSClientTest {
         }
     }
 
-    @Test(expected = FaaSLambdaExceptionV1.class)
+    @Test(expected = FaaSLambdaException.class)
     public void invokeViaUUIDThrowFaaSLambdaException() throws IOException, FaaSException {
         try {
             long timestamp = System.currentTimeMillis();
             FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
             invocationData.setTimestamp(timestamp);
-            FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+            FaaSError faaSError = new FaaSError(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(),
                     "My custom error.");
 
             when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
@@ -561,13 +562,13 @@ public class FaaSClientTest {
         }
     }
 
-    @Test(expected = FaaSLambdaExceptionV1.class)
+    @Test(expected = FaaSLambdaException.class)
     public void invokeViaEventTypeThrowsFaaSLambdaException() throws IOException, FaaSException {
         try {
             long timestamp = System.currentTimeMillis();
             FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
             invocationData.setTimestamp(timestamp);
-            FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+            FaaSError faaSError = new FaaSError(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(),
                     "My custom error.");
 
             when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),

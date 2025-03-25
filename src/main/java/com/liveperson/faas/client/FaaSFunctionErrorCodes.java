@@ -3,7 +3,7 @@ package com.liveperson.faas.client;
 /**
  * V2 Functions error Codes
  */
-enum FaaSFunctionErrorCodes {
+ public enum FaaSFunctionErrorCodes {
     CUSTOM_FAILURE("com.customer.faas.function.threw-error"),
     RUNTIME_EXCEPTION("com.customer.faas.function.js-runtime-error"),
     EXECUTION_WINDOW_EXCEEDED("com.customer.faas.function.execution-exceeded");
