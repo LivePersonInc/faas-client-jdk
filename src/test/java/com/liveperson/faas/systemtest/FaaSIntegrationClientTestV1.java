@@ -183,7 +183,7 @@ public class FaaSIntegrationClientTestV1 {
         assertEquals("success", response);
     }
 
-    @Test(expected = FaaSDetailedException.class)
+    @Test(expected = FaaSDetailedExceptionV1.class)
     public void invokeViaUUIDThrowsFaasDetailedException() throws FaaSException, FaaSDetailedException {
         long timestamp = System.currentTimeMillis();
         Map<String, String> headers = getTestHeaders("error");
