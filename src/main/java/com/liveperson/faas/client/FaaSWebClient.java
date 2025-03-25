@@ -15,6 +15,7 @@ import com.liveperson.faas.http.DefaultRestClient;
 import com.liveperson.faas.http.RestClient;
 import com.liveperson.faas.metriccollector.MetricCollector;
 import com.liveperson.faas.metriccollector.NullMetricCollector;
+import com.liveperson.faas.response.lambda.FunctionResponse;
 import com.liveperson.faas.response.lambda.LambdaResponse;
 import com.liveperson.faas.security.AuthDPoPSignatureBuilder;
 import com.liveperson.faas.security.AuthSignatureBuilder;
@@ -57,7 +58,8 @@ public class FaaSWebClient implements FaaSClient {
     private static final String INVOKE_UUID_URI = "api/account/%s/lambdas/%s/invoke";
     private static final String INVOKE_EVENT_URI = "api/account/%s/events/%s/invoke";
     private static final String IS_IMPLEMENTED_URI = "api/account/%s/events/%s/isImplemented";
-    private static final String GET_LAMBDAS_URI = "api/account/%s/lambdas";
+    private static final String GET_LAMBDAS_URI = "api/account/%s/lambdas"; // V1
+    private static final String GET_FUNCTIONS_URI = "api/account/%s/functions"; // V1
     private static final String REQUEST_LOG_INVOKE = "Invocation with requestID %s will be carried out for accountID " +
             "%s with " +
             "url %s and requestBody %s";
@@ -204,9 +206,9 @@ public class FaaSWebClient implements FaaSClient {
      *
      * @throws CsdsRetrievalException
      */
-    private boolean isV2Domain() throws CsdsRetrievalException {
-        String domain = this.getGWDomain();
-        return domain.contains("fninvocations") || domain.contains("functions");
+    public boolean isV2Domain() throws CsdsRetrievalException {
+        String domain = this.getGWDomain(); // Will consider V2 only if the GW domain is V2
+        return domain.contains("fninvocations"); // || domain.contains("functions");
     }
 
     private boolean isEventImplemented(String lpEventSource, String event, OptionalParams optionalParams)
@@ -272,7 +274,7 @@ public class FaaSWebClient implements FaaSClient {
         String url = "unresolved";
         try {
             String getLambdasUri = String.format(GET_LAMBDAS_URI, accountId);
-            url = buildUIDomainUrl(userId, optionalQueryParams, getLambdasUri);
+            url = buildUIDomainUrlV1(userId, optionalQueryParams, getLambdasUri);
 
             Map<String, String> headers = generateRequestHeaders(this.getUIDomain(), url, requestId,
                     HttpMethod.GET.name());
@@ -282,6 +284,52 @@ public class FaaSWebClient implements FaaSClient {
             stopWatch.stop();
             metricCollector.onGetLambdasSuccess(userId, stopWatch.getTotalTimeSeconds(), accountId);
             return objectMapper.readValue(response, new TypeReference<List<LambdaResponse>>() {
+            });
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            collectMetricsGetLambdasFails(userId, stopWatch, e.getStatusCode(), e);
+            FaaSErrorV1 faaSError = this.getFaaSErrorV1(e);
+            throw new FaaSDetailedExceptionV1(faaSError, e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsGetLambdasFails(userId, stopWatch, -1, e);
+            throw new FaaSException("Error occurred during lambdas fetch for account: " + accountId, e);
+        }
+    }
+
+    @Override
+    public List<FunctionResponse> getFunctions(String userId, Map<String, String> optionalQueryParams,
+            OptionalParams optionalParams) throws FaaSException {
+        try {
+            if (!this.isV2Domain()) {
+                throw new FaaSException("Only available for V2 functions: " + accountId);
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
+
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
+                : optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        String url = "unresolved";
+
+        try {
+            String getFunctionsUri = String.format(GET_FUNCTIONS_URI, accountId);
+            url = buildUIDomainUrl(userId, optionalQueryParams, getFunctionsUri);
+
+            Map<String, String> headers = generateRequestHeaders(this.getUIDomain(), url, requestId,
+                    HttpMethod.GET.name());
+
+            logger.info(String.format(REQUEST_LOG_GET_LAMBDAS, requestId, accountId, url)); // TODO change REQUEST_LOG_GET_LAMBDAS
+            String response = restClient.get(url, headers, timeOutInMs);
+            stopWatch.stop();
+            metricCollector.onGetLambdasSuccess(userId, stopWatch.getTotalTimeSeconds(), accountId); // TODO add proprer metrics for FUnctions
+            return objectMapper.readValue(response, new TypeReference<List<FunctionResponse>>() {
             });
         } catch (RestException e) {
             logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
@@ -490,13 +538,31 @@ public class FaaSWebClient implements FaaSClient {
                     accountId, statusCode, e);
     }
 
-    private String buildUIDomainUrl(String userId, Map<String, String> optionalQueryParams,
+    private String buildUIDomainUrlV1(String userId, Map<String, String> optionalQueryParams,
             String getLambdasUri) throws CsdsRetrievalException {
         UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.newInstance()
                 .scheme(PROTOCOL)
                 .host(getUIDomain())
                 .pathSegment(getLambdasUri)
                 .queryParam(QUERY_PARAM_APIVERSION, API_VERSION)
+                .queryParam(QUERY_PARAM_USER_ID, userId);
+
+        if (!CollectionUtils.isEmpty(optionalQueryParams)) {
+            updateQueryParams(QUERY_PARAM_STATE, optionalQueryParams, uriComponentsBuilder);
+            updateQueryParams(QUERY_PARAM_EVENT_ID, optionalQueryParams, uriComponentsBuilder);
+            updateQueryParams(QUERY_PARAM_NAME, optionalQueryParams, uriComponentsBuilder);
+        }
+
+        return uriComponentsBuilder.build().toUriString();
+    }
+
+
+    private String buildUIDomainUrl(String userId, Map<String, String> optionalQueryParams,
+            String getLambdasUri) throws CsdsRetrievalException {
+        UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.newInstance()
+                .scheme(PROTOCOL)
+                .host(getUIDomain())
+                .pathSegment(getLambdasUri)
                 .queryParam(QUERY_PARAM_USER_ID, userId);
 
         if (!CollectionUtils.isEmpty(optionalQueryParams)) {
@@ -740,4 +806,5 @@ public class FaaSWebClient implements FaaSClient {
             return client;
         }
     }
+
 }
