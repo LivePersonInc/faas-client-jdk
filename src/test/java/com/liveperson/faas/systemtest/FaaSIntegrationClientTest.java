@@ -92,7 +92,7 @@ public class FaaSIntegrationClientTest {
     }
 
     @Test
-    public void getLambdasWithOptionalQueryParameters() throws Exception {
+    public void getFunctionsWithOptionalQueryParameters() throws Exception {
         HashMap<String, String> filterMap = new HashMap<String, String>();
         filterMap.put("eventId", "not-existing");
         List<FunctionResponse> lambdaResponse = clientWithBearer.getFunctions(userId, filterMap, optionalParams);
@@ -100,7 +100,7 @@ public class FaaSIntegrationClientTest {
     }
 
     @Test(expected = FaaSException.class)
-    public void getLambdasWithInvalidStateValueQueryParameter() throws IOException, FaaSException {
+    public void getFunctionsWithInvalidStateValueQueryParameter() throws IOException, FaaSException {
         try {
             HashMap<String, String> filterMap = new HashMap<String, String>();
             filterMap.put("state", "active");
@@ -108,6 +108,19 @@ public class FaaSIntegrationClientTest {
 
         } catch (FaaSException e) {
             assertTrue(e.getCause().toString().contains("Received response code 400"));
+            throw e;
+        }
+    }
+
+    @Test(expected = FaaSException.class)
+    public void getV1LambdasOnV2Account() throws IOException, FaaSException {
+        try {
+            HashMap<String, String> filterMap = new HashMap<String, String>();
+            filterMap.put("state", "active");
+            clientWithBearer.getLambdas(userId, filterMap, optionalParams);
+
+        } catch (FaaSException e) {
+            assertTrue(e.getMessage().toString().contains("Cannot get V1 Functions for a V2 Account"));
             throw e;
         }
     }

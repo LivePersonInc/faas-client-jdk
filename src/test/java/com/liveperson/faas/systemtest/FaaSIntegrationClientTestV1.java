@@ -111,6 +111,19 @@ public class FaaSIntegrationClientTestV1 {
         }
     }
 
+    @Test(expected = FaaSException.class)
+    public void getFunctionsOnV1Account() throws IOException, FaaSException {
+        try {
+            HashMap<String, String> filterMap = new HashMap<String, String>();
+            filterMap.put("state", "active");
+            clientWithBearer.getFunctions(userId, filterMap, optionalParams);
+
+        } catch (FaaSException e) {
+            assertTrue(e.getMessage().toString().contains("Cannot get V2 Functions for a V1 Account"));
+            throw e;
+        }
+    }
+
     @Test
     public void isImplementedEventRetrievedFromCache() throws Exception {
         boolean isImplemented = client.isImplemented(externalSystem, event, optionalParams);
