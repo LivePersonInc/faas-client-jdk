@@ -2,9 +2,11 @@ package com.liveperson.faas.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.liveperson.faas.client.types.FaaSEventImplementedExpiry;
 import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsClient;
 import com.liveperson.faas.dto.FaaSError;
+import com.liveperson.faas.dto.FaaSErrorV1;
 import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.RestClient;
@@ -26,6 +28,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +104,12 @@ public class FaaSClientTest {
                 when(authDPoPSignatureBuilder.getAccessTokenInternal(anyString())).thenReturn(accessToken);
                 when(authDPoPSignatureBuilder.getDpopHeaderInternal(anyString(), anyString(), anyString()))
                                 .thenReturn(dpopHeader);
+        }
+
+        @Test
+        public void isV2Domain() throws Exception {
+                Boolean isV2 = client.isV2Domain();
+                assertTrue(isV2);
         }
 
         @Test
@@ -246,6 +255,48 @@ public class FaaSClientTest {
                                 "LP-EventSource").contains(lpEventSource));
                 assertEquals("Lambda invocation result does not match expected value", expectedResponse.toString(),
                                 response.toString());
+        }
+
+        @Test
+        public void invokeWithUUIDWithoutResponse() throws IOException, FaaSException {
+                Map<String, String> headers = getHeaders();
+                FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+
+                client.invokeByUUID(lpEventSource, lambdaUUID, faaSInvocation, optionalParams);
+
+                verify(metricCollectorMock, times(1)).onInvokeByUUIDSuccess(eq(lpEventSource), anyFloat(),
+                                eq(lambdaUUID),
+                                eq(accountId));
+                verify(restClientMock, times(1)).post(getExpectedInvokeUUIDUrl(), headers,
+                                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+        }
+
+        @Test
+        public void invokeWithFaaSEventWithRequestIdWithoutResponse() throws IOException, FaaSException {
+                Map<String, String> headers = getHeaders();
+                FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+                optionalParams.setRequestId(requestId);
+
+                client.invokeByEvent(lpEventSource, event, faaSInvocation, optionalParams);
+
+                verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyFloat(),
+                                eq(event.toString()), eq(accountId));
+                verify(restClientMock, times(1)).post(getExpectedInvokeEventUrl(), headers,
+                                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
+        }
+
+        @Test
+        public void invokeWithFaaSEventWithRequestIdAndEventStringWithoutResponse() throws IOException, FaaSException {
+                Map<String, String> headers = getHeaders();
+                FaaSInvocation<String> faaSInvocation = getStringFaaSInvocation(headers);
+                optionalParams.setRequestId(requestId);
+
+                client.invokeByEvent(lpEventSource, event.toString(), faaSInvocation, optionalParams);
+
+                verify(metricCollectorMock, times(1)).onInvokeByEventSuccess(eq(lpEventSource), anyFloat(),
+                                eq(event.toString()), eq(accountId));
+                verify(restClientMock, times(1)).post(getExpectedInvokeEventUrl(), headers,
+                                faaSInvocation.toString(), optionalParams.getTimeOutInMs());
         }
 
         @Test(expected = FaaSDetailedException.class)
@@ -632,7 +683,8 @@ public class FaaSClientTest {
                 when(restClientMock.get(eq(getExpectedFunctionsOfAnAccountUrl()), httpHeaderCaptor.capture(),
                                 eq(defaultTimeOut)))
                                 .thenReturn(mockResponse);
-                List<FunctionResponse> actualResponse = clientWithDPoP.getFunctions(userId, new HashMap<String, String>(),
+                List<FunctionResponse> actualResponse = clientWithDPoP.getFunctions(userId,
+                                new HashMap<String, String>(),
                                 optionalParams);
                 List<FunctionResponse> expectedResponse = objectMapper.readValue(mockResponse,
                                 new TypeReference<List<FunctionResponse>>() {
@@ -652,7 +704,6 @@ public class FaaSClientTest {
 
         @Test
         public void getFunctionsWithOptionalQueryParameters() throws IOException {
-                Map<String, String> headers = getHeaders();
                 FunctionResponse lambdaResponse = new FunctionResponse();
                 FunctionResponse[] responses = new FunctionResponse[2];
                 responses[0] = lambdaResponse;
@@ -687,7 +738,8 @@ public class FaaSClientTest {
 
                         client.getFunctions(userId, new HashMap<String, String>(), optionalParams);
                 } catch (Exception ex) {
-                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(), eq(accountId),
+                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(),
+                                        eq(accountId),
                                         eq(500),
                                         any());
                         throw ex;
@@ -703,7 +755,8 @@ public class FaaSClientTest {
                                                         "This is an unexpected error response.", 500));
                         client.getFunctions(userId, new HashMap<String, String>(), optionalParams);
                 } catch (Exception ex) {
-                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(), eq(accountId),
+                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(),
+                                        eq(accountId),
                                         eq(500),
                                         any());
                         throw ex;
@@ -718,11 +771,89 @@ public class FaaSClientTest {
                                         .thenThrow(new NullPointerException());
                         client.getFunctions(userId, new HashMap<String, String>(), optionalParams);
                 } catch (Exception ex) {
-                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(), eq(accountId),
+                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(),
+                                        eq(accountId),
                                         eq(-1),
                                         any());
                         throw ex;
                 }
+        }
+
+        @Test
+        public void isImplementedEventRetrievedFromCache() throws Exception {
+                FaaSEventImplementedExpiry eventExpiry = new FaaSEventImplementedExpiry();
+                eventExpiry.setImplemented(true);
+                eventExpiry.setExpirationDate(LocalDateTime.now().plusMinutes(2));
+
+                when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(),
+                                eq(defaultTimeOut))).thenReturn(
+                                                "{\"implemented\": true}");
+                when(defaultIsImplementedCacheMock.getIfCachedAndValid(eq(event.toString()))).thenReturn(eventExpiry);
+
+                boolean isImplemented = client.isImplemented(lpEventSource, event, optionalParams);
+
+                verify(metricCollectorMock, times(0)).onIsImplementedSuccess(eq(lpEventSource), anyFloat(),
+                                eq(event.toString()), eq(accountId));
+                assertTrue("Lambda should be implemented", isImplemented);
+                verify(restClientMock, times(0)).get(any(), any(), eq(optionalParams.getTimeOutInMs()));
+
+        }
+
+        @Test
+        public void isImplementedEventNoCacheWithDPoP() throws Exception {
+                when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(),
+                                eq(defaultTimeOut))).thenReturn(
+                                                "{\"implemented\": true}");
+                when(defaultIsImplementedCacheMock.getIfCachedAndValid(eq(event.toString()))).thenReturn(null);
+
+                boolean isImplemented = clientWithDPoP.isImplemented(lpEventSource, event, optionalParams);
+
+                assertTrue("Lambda should be implemented", isImplemented);
+                verify(authDPoPSignatureBuilder, times(1)).getAccessTokenInternal(eq("https://" + faasGWUrl));
+                verify(authDPoPSignatureBuilder, times(1)).getDpopHeaderInternal(
+                                eq(getExpectedIsImplementedUrl()),
+                                eq("GET"), eq(accessToken));
+                assertTrue("Lambda invocation with wrong authorization header",
+                                httpHeaderCaptor.getValue().get("Authorization").equals("DPoP " + accessToken));
+                assertTrue("Lambda invocation with wrong DPoP header",
+                                httpHeaderCaptor.getValue().get("DPoP").equals(dpopHeader));
+                assertTrue(httpHeaderCaptor.getValue().get(
+                                "LP-EventSource").contains(lpEventSource));
+
+        }
+
+        @Test(expected = FaaSDetailedExceptionV1.class)
+        public void isImplementedThrowsFaaSDetailedException() throws IOException, FaaSException {
+                try {
+                        FaaSErrorV1 faaSError = new FaaSErrorV1("faas.error.code", "My custom error.");
+
+                        when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(),
+                                        eq(defaultTimeOut)))
+                                        .thenThrow(new RestException("Error during rest call.",
+                                                        objectMapper.writeValueAsString(faaSError),
+                                                        500));
+
+                        client.isImplemented(lpEventSource, event, optionalParams);
+                } catch (Exception ex) {
+                        verify(metricCollectorMock, times(1)).onIsImplementedFailure(eq(lpEventSource), anyFloat(),
+                                        eq(event.toString()), eq(accountId), eq(500), any());
+                        throw ex;
+                }
+        }
+
+        @Test(expected = FaaSException.class)
+        public void isImplementedThrowFaaSException() throws FaaSException, TokenGenerationException {
+                try {
+                        when(authSignatureBuilder.getAuthHeader())
+                                        .thenThrow(new TokenGenerationException("could not generate " +
+                                                        "token"));
+                        client.isImplemented(lpEventSource, event, optionalParams);
+                } catch (Exception ex) {
+                        verify(metricCollectorMock, times(1)).onIsImplementedFailure(eq(lpEventSource), anyFloat(),
+                                        eq(event.toString()), eq(accountId), eq(-1), any());
+                        throw ex;
+                }
+
         }
 
         private FaaSWebClient getFaaSClient() {
@@ -747,13 +878,7 @@ public class FaaSClientTest {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Authorization", authHeader);
                 headers.put("X-REQUEST-ID", requestId);
-                return headers;
-        }
-
-        private Map<String, String> getCompleteHeaders() {
-                Map<String, String> headers = new HashMap<>();
-                headers.put("Authorization", authHeader);
-                headers.put("X-REQUEST-ID", requestId);
+                headers.put("LP-EventSource", lpEventSource);
                 return headers;
         }
 

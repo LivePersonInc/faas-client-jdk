@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyFloat;
@@ -85,6 +86,7 @@ public class FaaSClientTestV1 {
         private String dpopHeader = "dpopJWT";
 
         private OptionalParams optionalParams;
+        
 
         @Before
         public void before() throws Exception {
@@ -101,6 +103,12 @@ public class FaaSClientTestV1 {
                 when(authDPoPSignatureBuilder.getAccessTokenInternal(anyString())).thenReturn(accessToken);
                 when(authDPoPSignatureBuilder.getDpopHeaderInternal(anyString(), anyString(), anyString()))
                                 .thenReturn(dpopHeader);
+        }
+
+        @Test
+        public void isV2Domain() throws Exception {
+            Boolean isV2 = client.isV2Domain();
+            assertFalse(isV2);
         }
 
         @Test
@@ -777,7 +785,6 @@ public class FaaSClientTestV1 {
 
         @Test
         public void getLambdasWithOptionalQueryParameters() throws IOException {
-                Map<String, String> headers = getHeaders();
                 LambdaResponse lambdaResponse = new LambdaResponse();
                 LambdaResponse[] responses = new LambdaResponse[2];
                 responses[0] = lambdaResponse;
@@ -879,8 +886,6 @@ public class FaaSClientTestV1 {
                 boolean isImplemented = clientWithDPoP.isImplemented(externalSystem, event, optionalParams);
 
                 assertTrue("Lambda should be implemented", isImplemented);
-                // verify(restClientMock, times(0)).get(any(), any(),
-                // eq(optionalParams.getTimeOutInMs()));
                 verify(authDPoPSignatureBuilder, times(1)).getAccessTokenInternal(eq("https://" + faasGWUrl));
                 verify(authDPoPSignatureBuilder, times(1)).getDpopHeaderInternal(
                                 eq(getExpectedIsImplementedUrl()),

@@ -195,13 +195,30 @@ public class FaaSWebClient implements FaaSClient {
     public boolean isImplemented(String lpEventSource, FaaSEvent event, OptionalParams optionalParams)
             throws FaaSException {
         String eventId = event.toString();
-        return isEventImplemented(lpEventSource, eventId, optionalParams);
+        try {
+            if (this.isV2Domain()) {
+                return isEventImplemented(lpEventSource, eventId, optionalParams);
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
+
+        return isEventImplementedV1(lpEventSource, eventId, optionalParams);
     }
 
     @Override
     public boolean isImplemented(String lpEventSource, String event, OptionalParams optionalParams)
             throws FaaSException {
-        return isEventImplemented(lpEventSource, event, optionalParams);
+        try {
+            if (this.isV2Domain()) {
+                return isEventImplemented(lpEventSource, event, optionalParams);
+            }
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+        }
+        return isEventImplementedV1(lpEventSource, event, optionalParams);
     }
 
     @Override
@@ -210,7 +227,7 @@ public class FaaSWebClient implements FaaSClient {
         return domain.contains("fninvocations");
     }
 
-    private boolean isEventImplemented(String lpEventSource, String event, OptionalParams optionalParams)
+    private boolean isEventImplementedV1(String lpEventSource, String event, OptionalParams optionalParams)
             throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -229,6 +246,53 @@ public class FaaSWebClient implements FaaSClient {
 
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.GET.name());
+
+            String response = restClient.get(url, headers, timeOutInMs);
+
+            boolean isImplemented = objectMapper.readValue(response,
+                    com.liveperson.faas.dto.FaaSEventImplemented.class).getImplemented();
+            isImplementedCache.update(event, isImplemented);
+            stopWatch.stop();
+            metricCollector.onIsImplementedSuccess(lpEventSource, stopWatch.getTotalTimeSeconds(), event,
+                    accountId);
+
+            return isImplemented;
+        } catch (RestException e) {
+            logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
+                    e.getMessage()));
+            FaaSErrorV1 faaSError = getFaaSErrorV1(e);
+            collectMetricsIsImplementedFails(lpEventSource, event, stopWatch, e,
+                    e.getStatusCode());
+            throw new FaaSDetailedExceptionV1(faaSError, e);
+        } catch (Exception e) {
+            logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
+                    e.getMessage()));
+            collectMetricsIsImplementedFails(lpEventSource, event, stopWatch, e, -1);
+            throw new FaaSException("Error occured during check if lambda is implemented.", e);
+        }
+    }
+
+    private boolean isEventImplemented(String lpEventSource, String event, OptionalParams optionalParams)
+            throws FaaSException {
+        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
+                : optionalParams.getRequestId();
+        int timeOutInMs = optionalParams.getTimeOutInMs();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        FaaSEventImplementedExpiry eventExpiry = isImplementedCache.getIfCachedAndValid(event);
+        String url = "unresolved";
+        if (eventExpiry != null) {
+            return eventExpiry.isImplemented();
+        }
+        try {
+            String isImplementedUri = String.format(IS_IMPLEMENTED_URI, accountId, event);
+            url = buildGWDomainUrl(isImplementedUri);
+            logger.info(String.format(REQUEST_LOG_IS_IMPLEMENTED, requestId, accountId, url));
+
+            Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
+                    HttpMethod.GET.name());
+
+            headers.put("LP-EventSource", lpEventSource); // TODO: add to generate Request Headers
 
             String response = restClient.get(url, headers, timeOutInMs);
 

@@ -8,9 +8,6 @@ package com.liveperson.faas.client;
     RUNTIME_EXCEPTION("com.customer.faas.function.js-runtime-error"),
     EXECUTION_WINDOW_EXCEEDED("com.customer.faas.function.execution-exceeded");
 
-    // TODO: Check if other errors are required
-    // https://gitlab.com/l1905/conversational-cloud-engineering/platform-enablement/functions/core-gcpevg/-/blob/develop/src/controllers/invocation.ts?ref_type=heads
-
     private String code;
 
     FaaSFunctionErrorCodes(String code) {
