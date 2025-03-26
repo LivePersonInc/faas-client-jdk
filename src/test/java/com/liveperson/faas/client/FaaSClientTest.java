@@ -77,7 +77,6 @@ public class FaaSClientTest {
         @Mock
         private DefaultIsImplementedCache defaultIsImplementedCacheMock;
         private String accountId = "11111111";
-        private String apiVersion = "1";
         private String lpEventSource = "test_system";
         private String userId = "0051393312";
         private FaaSEvent event = FaaSEvent.ChatPostSurveyEmailTranscript;
@@ -627,7 +626,7 @@ public class FaaSClientTest {
                                 });
 
                 System.out.println(actualResponse.get(0));
-                verify(metricCollectorMock, times(1)).onGetLambdasSuccess(eq(userId), anyFloat(), eq(accountId));
+                verify(metricCollectorMock, times(1)).onGetFunctionsSuccess(eq(userId), anyFloat(), eq(accountId));
                 assertEquals(expectedResponse.get(0), actualResponse.get(0));
         }
 
@@ -644,7 +643,7 @@ public class FaaSClientTest {
                                 new TypeReference<List<FunctionResponse>>() {
                                 });
 
-                verify(metricCollectorMock, times(1)).onGetLambdasSuccess(eq(userId), anyFloat(), eq(accountId));
+                verify(metricCollectorMock, times(1)).onGetFunctionsSuccess(eq(userId), anyFloat(), eq(accountId));
                 verify(authDPoPSignatureBuilder, times(1)).getAccessTokenInternal(eq("https://" + faasUIUrl));
                 verify(authDPoPSignatureBuilder, times(1)).getDpopHeaderInternal(
                                 eq(getExpectedFunctionsOfAnAccountUrl()),
@@ -676,7 +675,7 @@ public class FaaSClientTest {
                 } catch (FaaSException e) {
                 }
 
-                verify(metricCollectorMock, times(1)).onGetLambdasSuccess(eq(userId), anyFloat(), eq(accountId));
+                verify(metricCollectorMock, times(1)).onGetFunctionsSuccess(eq(userId), anyFloat(), eq(accountId));
                 assertEquals(expectedUrl, urlCaptor.getValue());
 
         }
@@ -693,7 +692,7 @@ public class FaaSClientTest {
 
                         client.getFunctions(userId, new HashMap<String, String>(), optionalParams);
                 } catch (Exception ex) {
-                        verify(metricCollectorMock, times(1)).onGetLambdasFailure(eq(userId), anyFloat(), eq(accountId),
+                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(), eq(accountId),
                                         eq(500),
                                         any());
                         throw ex;
@@ -701,15 +700,15 @@ public class FaaSClientTest {
         }
 
         @Test(expected = FaaSException.class)
-        public void getLambdasThrowFaaSExceptionIfResponseNotParsable() throws IOException, FaaSException {
+        public void getFunctionsThrowFaaSExceptionIfResponseNotParsable() throws IOException, FaaSException {
                 try {
                         when(restClientMock.get(eq(getExpectedFunctionsOfAnAccountUrl()), httpHeaderCaptor.capture(),
                                         eq(defaultTimeOut)))
                                         .thenThrow(new RestException("Error during call.",
                                                         "This is an unexpected error response.", 500));
-                        client.getLambdas(userId, new HashMap<String, String>(), optionalParams);
+                        client.getFunctions(userId, new HashMap<String, String>(), optionalParams);
                 } catch (Exception ex) {
-                        verify(metricCollectorMock, times(1)).onGetLambdasFailure(eq(userId), anyFloat(), eq(accountId),
+                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(), eq(accountId),
                                         eq(500),
                                         any());
                         throw ex;
@@ -717,14 +716,14 @@ public class FaaSClientTest {
         }
 
         @Test(expected = FaaSException.class)
-        public void getLambdasThrowFaaSExceptionWhenRuntimeExceptionOccurs() throws IOException, FaaSException {
+        public void getFunctionsThrowFaaSExceptionWhenRuntimeExceptionOccurs() throws IOException, FaaSException {
                 try {
                         when(restClientMock.get(eq(getExpectedFunctionsOfAnAccountUrl()), httpHeaderCaptor.capture(),
                                         eq(defaultTimeOut)))
                                         .thenThrow(new NullPointerException());
-                        client.getLambdas(userId, new HashMap<String, String>(), optionalParams);
+                        client.getFunctions(userId, new HashMap<String, String>(), optionalParams);
                 } catch (Exception ex) {
-                        verify(metricCollectorMock, times(1)).onGetLambdasFailure(eq(userId), anyFloat(), eq(accountId),
+                        verify(metricCollectorMock, times(1)).onGetFunctionsFailure(eq(userId), anyFloat(), eq(accountId),
                                         eq(-1),
                                         any());
                         throw ex;

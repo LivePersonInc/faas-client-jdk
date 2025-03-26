@@ -67,6 +67,8 @@ public class FaaSWebClient implements FaaSClient {
             "carried out for accountId %s with url %s";
     private static final String REQUEST_LOG_GET_LAMBDAS = "Get Lambdas request with requestID %s will be " +
             "carried out for accountId %s with url %s";
+    private static final String REQUEST_LOG_GET_FUNCTIONS = "Get Functions request with requestID %s will be " +
+            "carried out for accountId %s with url %s";
     private static final String REQUEST_REST_EXCEPTION_LOG = "Rest exception occurred for request to url %s with " +
             "requestID %s" +
             " and " +
@@ -302,14 +304,16 @@ public class FaaSWebClient implements FaaSClient {
     @Override
     public List<FunctionResponse> getFunctions(String userId, Map<String, String> optionalQueryParams,
             OptionalParams optionalParams) throws FaaSException {
+        boolean isFunctionsV2 = false;
         try {
-            if (!this.isV2Domain()) {
-                throw new FaaSException("Only available for V2 functions: " + accountId);
-            }
+            isFunctionsV2 = this.isV2Domain();
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException("A CSDS error occurred during check if account FaaSGW domain is V2", e);
         }
+
+        if (!isFunctionsV2)
+            throw new FaaSException("Account: " + accountId + " Functions domains are not V2");
 
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -325,22 +329,24 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getUIDomain(), url, requestId,
                     HttpMethod.GET.name());
 
-            logger.info(String.format(REQUEST_LOG_GET_LAMBDAS, requestId, accountId, url)); // TODO change REQUEST_LOG_GET_LAMBDAS
+            logger.info(String.format(REQUEST_LOG_GET_FUNCTIONS, requestId, accountId, url));
+
             String response = restClient.get(url, headers, timeOutInMs);
             stopWatch.stop();
-            metricCollector.onGetLambdasSuccess(userId, stopWatch.getTotalTimeSeconds(), accountId); // TODO add proprer metrics for FUnctions
+            metricCollector.onGetFunctionsSuccess(userId, stopWatch.getTotalTimeSeconds(), accountId);
+
             return objectMapper.readValue(response, new TypeReference<List<FunctionResponse>>() {
             });
         } catch (RestException e) {
             logger.error(String.format(REQUEST_REST_EXCEPTION_LOG, url, requestId, accountId, e.getStatusCode(),
                     e.getMessage()));
-            collectMetricsGetLambdasFails(userId, stopWatch, e.getStatusCode(), e);
-            FaaSErrorV1 faaSError = this.getFaaSErrorV1(e);
-            throw new FaaSDetailedExceptionV1(faaSError, e);
+            collectMetricsGetFunctionsFails(userId, stopWatch, e.getStatusCode(), e);
+            FaaSError faaSError = this.getFaaSError(e);
+            throw new FaaSDetailedException(faaSError, e);
         } catch (Exception e) {
             logger.error(String.format(REQUEST_EXCEPTION_LOG, url, requestId, accountId,
                     e.getMessage()));
-            collectMetricsGetLambdasFails(userId, stopWatch, -1, e);
+            collectMetricsGetFunctionsFails(userId, stopWatch, -1, e);
             throw new FaaSException("Error occurred during lambdas fetch for account: " + accountId, e);
         }
     }
@@ -349,6 +355,12 @@ public class FaaSWebClient implements FaaSClient {
         if (stopWatch.isRunning())
             stopWatch.stop();
         metricCollector.onGetLambdasFailure(userId, stopWatch.getTotalTimeSeconds(), accountId, statusCode, e);
+    }
+
+    private void collectMetricsGetFunctionsFails(String userId, StopWatch stopWatch, int statusCode, Exception e) {
+        if (stopWatch.isRunning())
+            stopWatch.stop();
+        metricCollector.onGetFunctionsFailure(userId, stopWatch.getTotalTimeSeconds(), accountId, statusCode, e);
     }
 
     /**
@@ -555,7 +567,6 @@ public class FaaSWebClient implements FaaSClient {
 
         return uriComponentsBuilder.build().toUriString();
     }
-
 
     private String buildUIDomainUrl(String userId, Map<String, String> optionalQueryParams,
             String getLambdasUri) throws CsdsRetrievalException {

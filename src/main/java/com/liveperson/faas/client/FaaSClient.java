@@ -160,7 +160,7 @@ public interface FaaSClient {
      * @param userId              LE user id
      * @param optionalQueryParams optional query params that are used for filtering
      *                            - supported params: state,
-     *                            eventId, name
+     *                            eventId, functionName
      * @param optionalParams      optional Parameters for request - requestId and
      *                            timeOut
      * @return A list of Functions that belong that the above account filtered by
@@ -168,8 +168,7 @@ public interface FaaSClient {
      *         optionalQueryParams
      * @throws FaaSException when error occurs during getLambda request
      */
-    List<FunctionResponse> getFunctions(String userId, Map<String, String> optionalQueryParams, // TODO: check the right
-                                                                                                // params for V2
+    List<FunctionResponse> getFunctions(String userId, Map<String, String> optionalQueryParams,
             OptionalParams optionalParams) throws FaaSException;
 
     /**

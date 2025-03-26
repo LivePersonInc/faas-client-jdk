@@ -4,25 +4,25 @@ public class NullMetricCollector implements MetricCollector {
 
     @Override
     public void onInvokeByEventSuccess(String lpEventSource, double requestDurationInSec, String event,
-                                       String accountId) {
+            String accountId) {
 
     }
 
     @Override
     public void onInvokeByEventFailure(String lpEventSource, double requestDurationInSec, String event,
-                                       String accountId, int statusCode, Exception ex) {
+            String accountId, int statusCode, Exception ex) {
 
     }
 
     @Override
     public void onInvokeByUUIDSuccess(String lpEventSource, double requestDurationInSec, String UUID,
-                                      String accountId) {
+            String accountId) {
 
     }
 
     @Override
     public void onInvokeByUUIDFailure(String lpEventSource, double requestDurationInSec, String UUID,
-                                      String accountId, int statusCode, Exception ex) {
+            String accountId, int statusCode, Exception ex) {
 
     }
 
@@ -33,19 +33,28 @@ public class NullMetricCollector implements MetricCollector {
 
     @Override
     public void onGetLambdasFailure(String userId, double requestDurationInSec, String accountId,
-                                    int statusCode, Exception ex) {
+            int statusCode, Exception ex) {
 
     }
 
     @Override
     public void onIsImplementedSuccess(String lpEventSource, double requestDurationInSc, String event,
-                                       String accountId) {
+            String accountId) {
 
     }
 
     @Override
     public void onIsImplementedFailure(String lpEventSource, double requestDurationInSc, String event,
-                                       String accountId, int statusCode, Exception ex) {
+            String accountId, int statusCode, Exception ex) {
 
+    }
+
+    @Override
+    public void onGetFunctionsSuccess(String userId, double requestDurationInSec, String accountId) {
+    }
+
+    @Override
+    public void onGetFunctionsFailure(String userId, double requestDurationInSec, String accountId,
+            int statusCode, Exception ex) {
     }
 }
