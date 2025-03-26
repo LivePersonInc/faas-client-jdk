@@ -33,7 +33,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class FaaSIntegrationClientTestV1 {
-    private static AuthSignature authSignatureBuilder;
+    private static AuthSignatureV1 authSignatureBuilder;
     private FaaSWebClient client;
     private FaaSWebClient clientWithBearer;
     private DefaultRestClient restClient = new DefaultRestClient();
@@ -63,13 +63,20 @@ public class FaaSIntegrationClientTestV1 {
             lambdaUUID = dotenv.get("LAMBDA_UUID_V1");
         }
         client = getFaaSClient();
-        authSignatureBuilder = new AuthSignature();
+        authSignatureBuilder = new AuthSignatureV1();
         clientWithBearer = getFaaSClientBearer();
         optionalParams = new OptionalParams();
         optionalParams.setTimeOutInMs(defaultTimeOut);
         optionalParams.setRequestId(requestId);
         userId = authSignatureBuilder.getUserId();
     }
+
+    @Test
+    public void isV2Domain() throws Exception {
+        Boolean isV2 = clientWithBearer.isV2Domain();
+        assertFalse(isV2);
+    }
+
 
     @Test
     public void getLambdas() throws Exception {

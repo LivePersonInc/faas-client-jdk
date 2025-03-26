@@ -74,6 +74,12 @@ public class FaaSIntegrationClientTest {
     }
 
     @Test
+    public void isV2Domain() throws Exception {
+        Boolean isV2 = clientWithBearer.isV2Domain();
+        assertTrue(isV2);
+    }
+
+    @Test
     public void getFunctions() throws Exception {
         List<FunctionResponse> functionResponse = clientWithBearer.getFunctions(userId, new HashMap<String, String>(),
                 optionalParams);

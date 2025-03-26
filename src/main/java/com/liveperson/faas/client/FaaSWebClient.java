@@ -204,13 +204,10 @@ public class FaaSWebClient implements FaaSClient {
         return isEventImplemented(lpEventSource, event, optionalParams);
     }
 
-    /**
-     *
-     * @throws CsdsRetrievalException
-     */
+    @Override
     public boolean isV2Domain() throws CsdsRetrievalException {
-        String domain = this.getGWDomain(); // Will consider V2 only if the GW domain is V2
-        return domain.contains("fninvocations"); // || domain.contains("functions");
+        String domain = this.getGWDomain();
+        return domain.contains("fninvocations");
     }
 
     private boolean isEventImplemented(String lpEventSource, String event, OptionalParams optionalParams)
@@ -268,6 +265,19 @@ public class FaaSWebClient implements FaaSClient {
 
     public List<LambdaResponse> getLambdas(String userId, Map<String, String> optionalQueryParams,
             OptionalParams optionalParams) throws FaaSException {
+
+        boolean isFunctionsV2 = false;
+        try {
+            isFunctionsV2 = this.isV2Domain();
+        } catch (CsdsRetrievalException e) {
+            logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
+            throw new FaaSException("A CSDS error occurred during check if account FaaSGW domain is V2", e);
+        }
+
+        if (isFunctionsV2)
+            throw new FaaSException("Cannot get V1 Functions for a V2 Account: " + accountId
+                    + ". Please use getFunctions() method instead");
+
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
@@ -313,7 +323,8 @@ public class FaaSWebClient implements FaaSClient {
         }
 
         if (!isFunctionsV2)
-            throw new FaaSException("Account: " + accountId + " Functions domains are not V2");
+            throw new FaaSException("Cannot get V2 Functions for a V1 Account: " + accountId
+                    + ". Please use getLambdas() method instead");
 
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
