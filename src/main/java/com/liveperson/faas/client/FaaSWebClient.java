@@ -292,7 +292,7 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.GET.name());
 
-            headers.put("LP-EventSource", lpEventSource); // TODO: add to generate Request Headers
+            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside getHeaders once V1 is fully deprecated
 
             String response = restClient.get(url, headers, timeOutInMs);
 
@@ -501,7 +501,7 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.POST.name());
 
-            headers.put("LP-EventSource", lpEventSource); // TODO: add to generate Request Headers
+            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside getHeaders once V1 is fully deprecated
 
             logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
             String response = restClient.post(url, headers, data.toString(),
