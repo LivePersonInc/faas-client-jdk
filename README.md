@@ -424,19 +424,18 @@ The methods themselves are called in the appropriate place.
 
 ### Test setup
 
-For the system tests to run you will have to create a .env with following values and remove the @Ignore in the file.
-They are disabled by default as they are just for local testing not for the CI.
-
+For the system tests to run you will have to create a .env with following values.
 
 ```java
+FUNCTION_UUID=
 ACCOUNT_ID=
-SUCCESS_LAMBDA_UUID=
-FAILURE_LAMBDA_UUID=
 CLIENT_ID=
 CLIENT_SECRET=
-EVENT=
-FAILURE_EVENT=
-UNIMPLEMENTED_EVENT=
-UNIMPLEMENTED_EVENT_AS_STRING=
-EVENT_AS_STRING=
+CLIENT_SECRET=
+ACCOUNT_ID_V1=
+LAMBDA_UUID_V1=
+CLIENT_ID_V1=
+CLIENT_SECRET_V1=
+USER_NAME=
+PASSWORD=
 ```
