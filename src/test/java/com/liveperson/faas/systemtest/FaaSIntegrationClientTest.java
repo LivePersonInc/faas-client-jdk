@@ -2,7 +2,6 @@ package com.liveperson.faas.systemtest;
 
 import com.liveperson.faas.client.DefaultIsImplementedCache;
 import com.liveperson.faas.client.FaaSEvent;
-import com.liveperson.faas.client.FaaSLambdaErrorCodesV1;
 import com.liveperson.faas.client.FaaSWebClient;
 import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsMapClient;
@@ -10,7 +9,7 @@ import com.liveperson.faas.dto.FaaSInvocation;
 import com.liveperson.faas.exception.*;
 import com.liveperson.faas.http.DefaultRestClient;
 import com.liveperson.faas.metriccollector.MetricCollector;
-import com.liveperson.faas.response.lambda.LambdaResponse;
+import com.liveperson.faas.response.lambda.FunctionResponse;
 import com.liveperson.faas.security.AuthSignatureBuilder;
 import com.liveperson.faas.util.AuthBearerGenerator;
 import com.liveperson.faas.util.BearerConfigResponseObject;
@@ -36,7 +35,7 @@ import static org.junit.Assert.assertTrue;
  * V2
  */
 public class FaaSIntegrationClientTest {
-    private static AuthSignatureV1 authSignatureBuilder;
+    private static AuthSignature authSignatureBuilder;
     private FaaSWebClient client;
     private FaaSWebClient clientWithBearer;
     private DefaultRestClient restClient = new DefaultRestClient();
@@ -45,7 +44,7 @@ public class FaaSIntegrationClientTest {
     private String accountId = System.getenv("ACCOUNT_ID");
     private String clientId = System.getenv("CLIENT_ID");
     private String clientSecret = System.getenv("CLIENT_SECRET");
-    private String lambdaUUID = System.getenv("LAMBDA_UUID");
+    private String lambdaUUID = System.getenv("FUNCTION_UUID");
     private String userId;
     private String externalSystem = "test_system";
     private FaaSEvent event = FaaSEvent.ConversationalCommand;
@@ -58,15 +57,15 @@ public class FaaSIntegrationClientTest {
     @Before
     public void before() throws Exception, TokenGenerationException {
         String env = System.getenv("ENV");
-        if (env != "prod") {
+        if (env != "PROD") {
             Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
             accountId = dotenv.get("ACCOUNT_ID");
             clientId = dotenv.get("CLIENT_ID");
             clientSecret = dotenv.get("CLIENT_SECRET");
-            lambdaUUID = dotenv.get("LAMBDA_UUID");
+            lambdaUUID = dotenv.get("FUNCTION_UUID");
         }
         client = getFaaSClient();
-        authSignatureBuilder = new AuthSignatureV1();
+        authSignatureBuilder = new AuthSignature();
         clientWithBearer = getFaaSClientBearer();
         optionalParams = new OptionalParams();
         optionalParams.setTimeOutInMs(defaultTimeOut);
@@ -75,22 +74,22 @@ public class FaaSIntegrationClientTest {
     }
 
     @Test
-    public void getLambdas() throws Exception {
-        List<LambdaResponse> lambdaResponse = clientWithBearer.getLambdas(userId, new HashMap<String, String>(),
+    public void getFunctions() throws Exception {
+        List<FunctionResponse> functionResponse = clientWithBearer.getFunctions(userId, new HashMap<String, String>(),
                 optionalParams);
-        assertTrue(lambdaResponse.size() > 0);
-        assertTrue(lambdaResponse.toString().contains("name"));
-        assertTrue(lambdaResponse.toString().contains("uuid"));
-        assertTrue(lambdaResponse.toString().contains("createdAt"));
-        assertTrue(lambdaResponse.toString().contains("updatedAt"));
-        assertTrue(lambdaResponse.toString().contains("updatedBy"));
+        assertTrue(functionResponse.size() > 0);
+        assertTrue(functionResponse.toString().contains("name"));
+        assertTrue(functionResponse.toString().contains("uuid"));
+        assertTrue(functionResponse.toString().contains("createdAt"));
+        assertTrue(functionResponse.toString().contains("updatedAt"));
+        assertTrue(functionResponse.toString().contains("updatedBy"));
     }
 
     @Test
     public void getLambdasWithOptionalQueryParameters() throws Exception {
         HashMap<String, String> filterMap = new HashMap<String, String>();
         filterMap.put("eventId", "not-existing");
-        List<LambdaResponse> lambdaResponse = clientWithBearer.getLambdas(userId, filterMap, optionalParams);
+        List<FunctionResponse> lambdaResponse = clientWithBearer.getFunctions(userId, filterMap, optionalParams);
         assertTrue(lambdaResponse.size() == 0);
     }
 
@@ -99,7 +98,7 @@ public class FaaSIntegrationClientTest {
         try {
             HashMap<String, String> filterMap = new HashMap<String, String>();
             filterMap.put("state", "active");
-            clientWithBearer.getLambdas(userId, filterMap, optionalParams);
+            clientWithBearer.getFunctions(userId, filterMap, optionalParams);
 
         } catch (FaaSException e) {
             assertTrue(e.getCause().toString().contains("Received response code 400"));
@@ -144,7 +143,6 @@ public class FaaSIntegrationClientTest {
         assertEquals("success", response[0].result.value);
     }
 
-
     // Please Note that in V1 it wont throw if event does not exist
     @Test(expected = FaaSDetailedException.class)
     public void invokeViaEventTypeWithNonExistingEvent() throws Exception {
@@ -152,13 +150,13 @@ public class FaaSIntegrationClientTest {
         long timestamp = System.currentTimeMillis();
         Map<String, String> headers = getTestHeaders("success");
         FaaSInvocation<UUIDResponse> invocationData = getUUIDResponseFaaSInvocation(eventPayload, timestamp, headers);
-        try{
+        try {
             client.invokeByEvent(externalSystem, FaaSEvent.ChatPostSurveyEmailTranscript,
-            invocationData, EventResponse[].class, optionalParams);
-        } catch(FaaSDetailedException e){
+                    invocationData, EventResponse[].class, optionalParams);
+        } catch (FaaSDetailedException e) {
             assertEquals(404, e.getCause().getStatusCode());
             throw e;
-        }        
+        }
     }
 
     @Test
@@ -201,7 +199,8 @@ public class FaaSIntegrationClientTest {
         try {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         } catch (FaaSDetailedException e) {
-          //  assertEquals(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(), e.getFaaSError().get());
+            // assertEquals(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(),
+            // e.getFaaSError().get());
             assertEquals(901, e.getCause().getStatusCode());
             throw e;
         }
@@ -245,7 +244,7 @@ class AuthSignature implements AuthSignatureBuilder {
 
     private DefaultRestClient restClient = new DefaultRestClient();
     private CsdsMapClient csdsClient = new CsdsMapClient(getAlphaDomains());
-    private String accountId = System.getenv("ACCOUNT_ID_V1");
+    private String accountId = System.getenv("ACCOUNT_ID");
     private String username = System.getenv("USER_NAME");
     private String password = System.getenv("PASSWORD");
     private AuthBearerGenerator bearerGenerator;
@@ -256,7 +255,7 @@ class AuthSignature implements AuthSignatureBuilder {
         String env = System.getenv("ENV");
         if (env != "prod") {
             Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-            accountId = dotenv.get("ACCOUNT_ID_V1");
+            accountId = dotenv.get("ACCOUNT_ID");
             username = dotenv.get("USER_NAME");
             password = dotenv.get("PASSWORD");
         }
