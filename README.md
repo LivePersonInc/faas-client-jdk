@@ -127,8 +127,8 @@ builder.withCsdsMap(csdsMap);
 <details><summary>isImplementedCache</summary>
 <p>
 
-You can set the IsImplementedCache for the `isImplemented` method which determines whether there are deployed lambdas that implement a given event.
-By instantiating the client yourself you can set a custom caching time. Otherwise we will default back to 60 seconds. 
+You can set the IsImplementedCache for the `isImplemented` method which determines whether there are deployed functions that implement a given event.
+By instantiating the client yourself you can set a custom caching time. Otherwise we will default back to 60 seconds.
 
 ```java
 int cachingTimeInSeconds = 30;
@@ -154,8 +154,8 @@ builder.withMetricCollector(metricCollector);
 ### Preparing data for RESTful API calls
 
 ```java
-String lambdaUUID = "UUID";
-String externalSystem = "botStudio";
+String functionUUID = "UUID";
+String lpEventSource = "botStudio";
 ```
 
 Optional params allow you to set a timeout for the function calls and to set a requestId. 
@@ -169,15 +169,14 @@ optionalParams.setTimeOutInMs(40000)
 optionalParams.setRequestId("requestId");
 ```
 
+### Fetching functions
 
-### Fetching lambdas
+**You have to use your own authentication method when fetching functions as it relies on OAuth 1.0. / Oauth 2.0 + DPoP**
 
-
-**You have to use your own authentication method when fetching lambdas as it relies on OAuth 1.0. / Oauth 2.0 + DPoP**
-
-
-<details><summary>Fetching lambdas of account</summary>
+<details><summary>Fetching functions of account</summary>
 <p>
+
+For V1 functions use *getLambdas* method.
 
 ```java
 try {
@@ -195,12 +194,30 @@ try {
 } catch (FaaSException e) {...}
 ```
 
+For V2 functions use *getFunctions* method.
+
+```java
+try {
+    // After setting the builder up, instantiate the client
+    FaasClient faasClient = builder.build();
+
+    HashMap<String,String> filterMap = new HashMap<String, String>();
+    filterMap.put("state", "Draft") // Filter lambdas by state ("Draft", "Productive", "Modified", "Marked Undeployed")
+    filterMap.put("eventId", FaaSEvent.ControllerBotMessagingNewConversation.toString()); // Filter lambdas by event name (also substring)
+    filterMap.put("functionName", "lambda_substring") // Filter lambdas by name substring
+
+    List<FunctionResponse> lambdas = client.getFunctions(userId, filterMap, optionalParams);
+    ...
+
+} catch (FaaSException e) {...}
+```
+
 </p>
 </details>
 
-### Invoking lambda by UUID
+### Invoking function by UUID
 
-<details><summary>Invoking a lambda by UUID with response</summary>
+<details><summary>Invoking a function by UUID with response</summary>
 <p>
 
 ```java
@@ -219,10 +236,10 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build()
-    User result = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, User.class, optionalParams);
+    User result = client.invokeByUUID(lpEventSource, functionUUID, invocationData, User.class, optionalParams);
     //Or call it with a requestID:
     String requestId = "requestId";
-    User result = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, User.class, requestId, optionalParams);
+    User result = client.invokeByUUID(lpEventSource, functionUUID, invocationData, User.class, requestId, optionalParams);
     ...
 
 } catch (FaaSException e) {...}
@@ -249,7 +266,7 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build()
-    client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
+    client.invokeByUUID(lpEventSource, functionUUID, invocationData, optionalParams);
 
 } catch (FaaSException e) {...}
 ```
@@ -259,7 +276,7 @@ try {
 
 ### Invoking lambda by Event
 
-Calling by event invokes all deployed lambdas that implement the given event.
+Calling by event invokes all deployed functions that implement the given event.
 The result will therefore always be an array of objects the following structure:
 
 ```java
@@ -276,7 +293,7 @@ public class Response {
 }
 ```
 
-<details><summary>Invoking a lambda by event with response</summary>
+<details><summary>Invoking a function by event with response</summary>
 <p>
 
 ```java
@@ -297,11 +314,11 @@ try {
     FaasClient faasClient = builder.build()
 
     //Check if lambdas are implemented for event
-    boolean isImplemented = client.isImplemented(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript);
+    boolean isImplemented = client.isImplemented(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript);
 
     if(isImplemented){
         //Invoke lambdas for event
-        Response[] result = client.invokeByEvent(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
+        Response[] result = client.invokeByEvent(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
 
         // cast to list for convenience
         List<Response> = Arrays.asList(result);
@@ -314,7 +331,7 @@ try {
 </p>
 </details>
 
-<details><summary>Invoking a lambda by event without response</summary>
+<details><summary>Invoking a function by event without response</summary>
 <p>
 
 ```java
@@ -334,11 +351,11 @@ try {
     FaasClient faasClient = builder.build()
 
     //Check if lambdas are implemented for event
-    boolean isImplemented = client.isImplemented(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript);
+    boolean isImplemented = client.isImplemented(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript);
 
     if(isImplemented){
         //Invoke lambdas for event
-        client.invokeByEvent(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, optionalParams);
+        client.invokeByEvent(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, optionalParams);
     }
     ...
 
@@ -356,15 +373,15 @@ provide a string.`
 
 ```java
      //Check if lambdas are implemented for event
-    boolean isImplemented = client.isImplemented(externalSystem, event);
+    boolean isImplemented = client.isImplemented(lpEventSource, event);
 
     //With return type: 
     if(isImplemented) {
-        Response[] result = client.invokeByEvent(externalSystem, event, invocationData, Response[].class, optionalParams);
+        Response[] result = client.invokeByEvent(lpEventSource, event, invocationData, Response[].class, optionalParams);
     }
     //Without return type:
     if(isImplemented) {
-        client.invokeByEvent(externalSystem, event, invocationData, optionalParams);
+        client.invokeByEvent(lpEventSource, event, invocationData, optionalParams);
     }
 ```
 
@@ -422,7 +439,7 @@ LivePerson Functions can raise different types of exceptions. These exceptions a
 try {
     ...
     //Invoke lambdas for event
-    Response[] result = client.invoke(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
+    Response[] result = client.invoke(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
     ...
 
 } catch (FaaSLambdaException e){ // V1 Functions
