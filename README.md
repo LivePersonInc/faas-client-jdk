@@ -10,6 +10,34 @@ For more details on LivePerson Functions & its API have a look at:
 
 * [LivePerson Functions Overview](https://developers.liveperson.com/liveperson-functions-overview.html)
 
+## 🚨 Important Project Update: Functions V2 compatibility released! 🚨
+
+We are excited to announce a **major update** to our client: **Functions V2** is now available! 🎉
+
+### What's New?
+
+- **Naming Conventions:** For Functions V1, "Lambda" is used instead of "Function." For V2, "Function" is used, and any reference to "Lambda" refers to the Functions Platform V1.
+- **Client Compatibility:** The client is fully compatible with both Functions V1 and V2. It has been designed to minimize the need for changes. The client will automatically call the appropriate platform (V1 or V2) based on your account's CSDS domain for the "Invoke" and "isImplemented" methods.
+- **Getting Functions/Lambdas:** To retrieve functions/lambdas, you need to call the appropriate method based on your account version (V1 or V2). A method, *isV2Domain*, is provided to help with this. 
+- **Error Response Changes:** The error response body returned by the V2 platform has changed. For more details, refer to the [Exception Handling](#exception-handling) section.
+- **Updated/Added Methods:**
+  - *getFunctions* – Now required for retrieving V2 functions as a *FunctionResponse* object.
+  - *isV2Domain* – Determines whether the accounts associated with the client instance have a V2 domain from the CSDS.
+  - *ExternalSystem* has been renamed to *LpEventSource*.
+  - *FaaSError* contains now the V2 error while the *FaaSErrorV1* used for V1.
+
+### How to Use the New Features
+
+The client should continue to function as it did before, automatically calling either the V1 or V2 platform based on the account configuration for the "Invoke" and "isImplemented" methods. If you're handling function errors from the error response body within the client response payload, be aware that the V2 error format has changed. You'll need to adjust your handling logic accordingly. For more details, refer to the [Exception Handling](#exception-handling) section.
+
+**IMPORTANT**: If you're using *getFunctions*/*getLambdas*, be aware that the function data type has changed in V2. For V2, a list of *FunctionResponse* objects will be returned, while for V1, a list of *LambdaResponse* objects will be returned. Use the *isV2Domain* method to implement logic that calls the appropriate method based on the account version.
+
+### Action Required
+
+- Update the client to Version 2.x.x.
+- Adjust your error handling for V2 accounts. For more details, refer to the [Exception Handling](#exception-handling) section.
+- Modify your code to handle the response from *getFunctions*/*getLambdas* correctly, in case you're using these methods.
+
 ## Adding the client as maven dependency
 
 Go to your project's pom.xml file and add as dependency.
@@ -18,7 +46,7 @@ Go to your project's pom.xml file and add as dependency.
 <dependency>
   <groupId>com.liveperson.faas</groupId>
   <artifactId>functions-client</artifactId>
-  <version>1.2.2</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 
