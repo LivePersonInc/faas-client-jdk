@@ -55,7 +55,7 @@ public class FaaSIntegrationClientTestV1 {
     @Before
     public void before() throws Exception, TokenGenerationException {
         String env = System.getenv("ENV");
-        if (env != "prod") {
+        if (env != "PROD") {
             Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
             accountId = dotenv.get("ACCOUNT_ID_V1");
             clientId = dotenv.get("CLIENT_ID_V1");
