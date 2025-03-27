@@ -269,7 +269,7 @@ public class FaaSClientTestV1 {
                 }
         }
 
-        @Test(expected = FaaSLambdaExceptionV1.class)
+        @Test(expected = FaaSLambdaException.class)
         public void invokeViaUUIDThrowFaaSLambdaException() throws IOException, FaaSException {
                 try {
                         long timestamp = System.currentTimeMillis();
@@ -544,7 +544,7 @@ public class FaaSClientTestV1 {
                 }
         }
 
-        @Test(expected = FaaSLambdaExceptionV1.class)
+        @Test(expected = FaaSLambdaException.class)
         public void invokeViaEventTypeThrowsFaaSLambdaException() throws IOException, FaaSException {
                 try {
                         long timestamp = System.currentTimeMillis();
@@ -707,7 +707,7 @@ public class FaaSClientTestV1 {
                 client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         }
 
-        @Test(expected = FaaSLambdaExceptionV1.class)
+        @Test(expected = FaaSLambdaException.class)
         public void invokeViaUUIDNoResponseThrowFaaSLambdaException() throws Exception {
                 long timestamp = System.currentTimeMillis();
                 FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);

@@ -322,7 +322,7 @@ public class FaaSClientTest {
                 }
         }
 
-        @Test(expected = FaaSLambdaException.class)
+        @Test(expected = FaaSFunctionException.class)
         public void invokeViaUUIDThrowFaaSLambdaException() throws IOException, FaaSException {
                 try {
                         long timestamp = System.currentTimeMillis();
@@ -608,7 +608,7 @@ public class FaaSClientTest {
                 }
         }
 
-        @Test(expected = FaaSLambdaException.class)
+        @Test(expected = FaaSFunctionException.class)
         public void invokeViaEventTypeThrowsFaaSLambdaException() throws IOException, FaaSException {
                 try {
                         long timestamp = System.currentTimeMillis();

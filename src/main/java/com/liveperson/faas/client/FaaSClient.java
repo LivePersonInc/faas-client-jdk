@@ -177,6 +177,7 @@ public interface FaaSClient {
          * 
          * @return true if Client instance account is V2.
          * @throws CsdsRetrievalException
+         * @deprecated Once transition to V2 is completed will be removed.
          */
         public boolean isV2Domain() throws CsdsRetrievalException;
 }
