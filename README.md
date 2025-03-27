@@ -16,15 +16,15 @@ We are excited to announce a **major update** to our client: **Functions V2** is
 
 ### What's New?
 
-- **Naming Conventions:** For Functions V1, "Lambda" is used instead of "Function." For V2, "Function" is used, and any reference to "Lambda" refers to the Functions Platform V1.
-- **Client Compatibility:** The client is fully compatible with both Functions V1 and V2. It has been designed to minimize the need for changes. The client will automatically call the appropriate platform (V1 or V2) based on your account's CSDS domain for the "Invoke" and "isImplemented" methods.
-- **Getting Functions/Lambdas:** To retrieve functions/lambdas, you need to call the appropriate method based on your account version (V1 or V2). A method, *isV2Domain*, is provided to help with this. 
-- **Error Response Changes:** The error response body returned by the V2 platform has changed. For more details, refer to the [Exception Handling](#exception-handling) section.
-- **Updated/Added Methods:**
-  - *getFunctions* – Now required for retrieving V2 functions as a *FunctionResponse* object.
-  - *isV2Domain* – Determines whether the accounts associated with the client instance have a V2 domain from the CSDS.
-  - *ExternalSystem* has been renamed to *LpEventSource*.
-  - *FaaSError* contains now the V2 error while the *FaaSErrorV1* used for V1.
+* **Naming Conventions:** For Functions V1, "Lambda" is used instead of "Function." For V2, "Function" is used, and any reference to "Lambda" refers to the Functions Platform V1.
+* **Client Compatibility:** The client is fully compatible with both Functions V1 and V2. It has been designed to minimize the need for changes. The client will automatically call the appropriate platform (V1 or V2) based on your account's CSDS domain for the "Invoke" and "isImplemented" methods.
+* **Getting Functions/Lambdas:** To retrieve functions/lambdas, you need to call the appropriate method based on your account version (V1 or V2). A method, *isV2Domain*, is provided to help with this. 
+* **Error Response Changes:** The error response body returned by the V2 platform has changed. For more details, refer to the [Exception Handling](#exception-handling) section.
+* **Updated/Added Methods:**
+  * *getFunctions* – Now required for retrieving V2 functions as a *FunctionResponse* object.
+  * *isV2Domain* – Determines whether the accounts associated with the client instance have a V2 domain from the CSDS.
+  * *ExternalSystem* has been renamed to *LpEventSource*.
+  * *FaaSError* contains now the V2 error while the *FaaSErrorV1* used for V1.
 
 ### How to Use the New Features
 
@@ -34,9 +34,9 @@ The client should continue to function as it did before, automatically calling e
 
 ### Action Required
 
-- Update the client to Version 2.x.x.
-- Adjust your error handling for V2 accounts. For more details, refer to the [Exception Handling](#exception-handling) section.
-- Modify your code to handle the response from *getFunctions*/*getLambdas* correctly, in case you're using these methods.
+* Update the client to Version 2.x.x.
+* Adjust your error handling for V2 accounts. For more details, refer to the [Exception Handling](#exception-handling) section.
+* Modify your code to handle the response from *getFunctions*/*getLambdas* correctly, in case you're using these methods.
 
 ## Adding the client as maven dependency
 
@@ -394,11 +394,29 @@ More detailed information about Log4j2 can be found [here](https://logging.apach
 </p>
 </details>
 
-## Exception handling
+## Exception Handling
 
-LivePerson Functions can raise different kind of exceptions. General exceptions are wrapped in a `FaaSException`.
-`FaaSDetailedException`s occur when the request has been rejected by the service. For instance if the UUID of the lambda for invocation request does not exist. In order to get more details we recommend using the `getFaaSError` method. For a list of all error codes see [here](https://developers.liveperson.com/liveperson-functions-external-invocations-error-codes.html).
-`FaaSLambdaException` inherits from `FaaSDetailedException`. It is only raised during invocations, if the error is caused by the implementation of the lambda itself. For instance if the lambda returns an error on purpose or the lambda has a timeout. We recommend to monitor all the exceptions by using `e.printStackTrace()`, as this provides way more details then the error message alone. Alerting should only be done for `FaaSException`s or `FaaSDetailedException`.
+LivePerson Functions can raise different types of exceptions. These exceptions are generally wrapped in a `FaaSException`.
+
+* **`FaaSDetailedException`**: This occurs when the request is rejected by the service, such as when the UUID of the lambda in the invocation request does not exist. To get more details, we recommend using the `getFaaSError` method. For a list of all error codes, see [here](https://developers.liveperson.com/liveperson-functions-external-invocations-error-codes.html).
+
+### For V1 Platform
+
+* **`FaaSLambdaException`** inherits from `FaaSDetailedExceptionV1`. It is thrown during invocations if the error is caused by the implementation of the lambda itself (e.g., the lambda returns an error on purpose or has a timeout).
+* We recommend monitoring all exceptions using `e.printStackTrace()` since it provides much more detail than the error message alone.
+* Alerting should only be set up for `FaaSException` or `FaaSDetailedExceptionV1`.
+
+### For V2 Platform
+
+* **`FaaSFunctionException`** inherits from `FaaSDetailedException`. It is thrown during invocations if the error is caused by the function implementation itself (e.g., the function returns an error on purpose or has a timeout).
+* Similarly, monitor all exceptions using `e.printStackTrace()` to capture more details.
+* Alerting should only be set up for `FaaSException` or `FaaSDetailedException`.
+
+### Key Changes in V2
+
+* The error response object structure has changed.
+  * **ErrorCode** is now represented as **code**.
+  * **errorMessage** is now **message**.
 
 ```java
 try {
@@ -407,7 +425,7 @@ try {
     Response[] result = client.invoke(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
     ...
 
-} catch (FaaSLambdaException e){
+} catch (FaaSLambdaException e){ // V1 Functions
   /**
    * Lambda exceptions occur when the lambda fails due to the implementation.
    * These exceptions are not relevant for alerting, because there are no issues with the service itself.
@@ -415,12 +433,38 @@ try {
   e.printStackTrace();
 
   //Get Details of exception
-  FaaSError faaSError = e.getFaaSError();
+  FaaSErrorV1 faaSError = e.getFaaSError();
 
   faaSError.getErrorCode();
   faaSError.getErrorMsg();
+
+} catch (FaaSFunctionException e){ // V2 Functions
+  /**
+   * Function exceptions occur when the function fails due to the implementation.
+   * These exceptions are not relevant for alerting, because there are no issues with the service itself.
+   */
+  e.printStackTrace();
+
+  //Get Details of exception
+  FaaSError faaSError = e.getFaaSError();
+ 
+  faaSError.getCode(); 
+  faaSError.getMessage();
 }
-catch (FaaSDetailedException e) {
+catch (FaaSDetailedExceptionV1 e) { // V1 functions
+  /**
+   * Detailed Exceptions contain custom error codes that give more information.
+   * These errors are relevant for alerting
+   */
+  e.printStackTrace();
+
+  //Get Details of exception
+  FaaSErrorV1 faaSError = e.getFaaSError();
+
+  faaSError.getErrorCode(); 
+  faaSError.getErrorMsg();
+}
+catch (FaaSDetailedException e) { // Now V2 function
   /**
    * Detailed Exceptions contain custom error codes that give more information.
    * These errors are relevant for alerting
@@ -430,8 +474,8 @@ catch (FaaSDetailedException e) {
   //Get Details of exception
   FaaSError faaSError = e.getFaaSError();
 
-  faaSError.getErrorCode();
-  faaSError.getErrorMsg();
+  faaSError.getCode(); 
+  faaSError.getMessage();
 } catch (FaaSException e){
   /**
    * All general errors are wrapped in a FaaSException (i.e. parsing the JSON response, or 401 on authentication).             *

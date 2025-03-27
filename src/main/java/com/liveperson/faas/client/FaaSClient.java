@@ -7,7 +7,6 @@ import com.liveperson.faas.exception.FaaSException;
 import com.liveperson.faas.response.lambda.FunctionResponse;
 import com.liveperson.faas.response.lambda.LambdaResponse;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
