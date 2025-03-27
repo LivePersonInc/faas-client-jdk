@@ -24,14 +24,19 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Integration testing with Maven
         run: |
-          mvn test -Dtest=FaaSIntegrationClientTest
+          mvn test -Dtest=FaaSIntegrationClientTest,FaaSIntegrationClientTestV1
         env:
+          FUNCTION_UUID: ${{ secrets.FUNCTION_UUID }}
           ACCOUNT_ID: ${{ secrets.ACCOUNT_ID }}
-          LAMBDAUUID: ${{ secrets.LAMBDAUUID }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          USER: ${{ secrets.USER }}
-          PASS: ${{ secrets.PASS }}
+          LAMBDA_UUID_V1: ${{ secrets.LAMBDA_UUID_V1 }}
+          ACCOUNT_ID_V1: ${{ secrets.ACCOUNT_ID_V1 }}
+          CLIENT_ID_V1: ${{ secrets.CLIENT_ID_V1 }}
+          CLIENT_SECRET_V1: ${{ secrets.CLIENT_SECRET_V1 }}
+          USER_NAME: ${{ secrets.USER_NAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
           OSSRH_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
+          ENV: PROD
