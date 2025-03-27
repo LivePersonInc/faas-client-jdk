@@ -1,6 +1,11 @@
 package com.liveperson.faas.client;
 
-public enum FaaSLambdaErrorCodesV1 {
+
+/**
+ *  V1 Functions error codes
+ *  @deprecated FaaSFunctionErrorCodes will be used after transition to Functions V2
+ */
+public enum FaaSLambdaErrorCodes {
     CUSTOM_FAILURE("com.liveperson.faas.handler.custom-failure"),
     RUNTIME_EXCEPTION("com.liveperson.faas.handler.runtime-exception"),
     EXECUTION_WINDOW_EXCEEDED("com.liveperson.faas.handler.executiontime-exceeded"),
@@ -8,7 +13,7 @@ public enum FaaSLambdaErrorCodesV1 {
 
     private String code;
 
-    FaaSLambdaErrorCodesV1(String code) {
+    FaaSLambdaErrorCodes(String code) {
         this.code = code;
     }
 
@@ -17,7 +22,7 @@ public enum FaaSLambdaErrorCodesV1 {
     }
 
     public static boolean contains(String test) {
-        for (FaaSLambdaErrorCodesV1 c : FaaSLambdaErrorCodesV1.values()) {
+        for (FaaSLambdaErrorCodes c : FaaSLambdaErrorCodes.values()) {
             if (c.getCode().equals(test)) {
                 return true;
             }

@@ -275,7 +275,7 @@ public class FaaSClientTestV1 {
                         long timestamp = System.currentTimeMillis();
                         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                         invocationData.setTimestamp(timestamp);
-                        FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+                        FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(),
                                         "My custom error.");
 
                         when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
@@ -550,7 +550,7 @@ public class FaaSClientTestV1 {
                         long timestamp = System.currentTimeMillis();
                         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                         invocationData.setTimestamp(timestamp);
-                        FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(),
+                        FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(),
                                         "My custom error.");
 
                         when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
@@ -712,7 +712,7 @@ public class FaaSClientTestV1 {
                 long timestamp = System.currentTimeMillis();
                 FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                 invocationData.setTimestamp(timestamp);
-                FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), "My custom error.");
+                FaaSErrorV1 faaSError = new FaaSErrorV1(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(), "My custom error.");
 
                 when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
                                 httpBodyCaptor.capture(), eq(defaultTimeOut)))

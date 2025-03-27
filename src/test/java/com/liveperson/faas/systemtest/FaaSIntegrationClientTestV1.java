@@ -2,7 +2,7 @@ package com.liveperson.faas.systemtest;
 
 import com.liveperson.faas.client.DefaultIsImplementedCache;
 import com.liveperson.faas.client.FaaSEvent;
-import com.liveperson.faas.client.FaaSLambdaErrorCodesV1;
+import com.liveperson.faas.client.FaaSLambdaErrorCodes;
 import com.liveperson.faas.client.FaaSWebClient;
 import com.liveperson.faas.client.types.OptionalParams;
 import com.liveperson.faas.csds.CsdsMapClient;
@@ -212,7 +212,7 @@ public class FaaSIntegrationClientTestV1 {
         try {
             client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
         } catch (FaaSDetailedExceptionV1 e) {
-            assertEquals(FaaSLambdaErrorCodesV1.CUSTOM_FAILURE.getCode(), e.getFaaSError().getErrorCode());
+            assertEquals(FaaSLambdaErrorCodes.CUSTOM_FAILURE.getCode(), e.getFaaSError().getErrorCode());
             assertEquals(901, e.getCause().getStatusCode());
             throw e;
         }

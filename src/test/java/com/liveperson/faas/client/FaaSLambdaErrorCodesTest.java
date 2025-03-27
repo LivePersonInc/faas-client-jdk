@@ -9,14 +9,14 @@ import static org.junit.Assert.*;
 public class FaaSLambdaErrorCodesTest {
     @Test
     public void containsShouldReturnTrueForCustomCode(){
-        boolean contains = FaaSLambdaErrorCodesV1.contains("com.liveperson.faas.handler.custom-failure");
+        boolean contains = FaaSLambdaErrorCodes.contains("com.liveperson.faas.handler.custom-failure");
 
         assertTrue(contains);
     }
 
     @Test
     public void containsShouldNotReturnTrueForNoneCustomCode(){
-        boolean contains = FaaSLambdaErrorCodesV1.contains("com.liveperson.faas.handler.none-custom-failure");
+        boolean contains = FaaSLambdaErrorCodes.contains("com.liveperson.faas.handler.none-custom-failure");
 
         assertFalse(contains);
     }

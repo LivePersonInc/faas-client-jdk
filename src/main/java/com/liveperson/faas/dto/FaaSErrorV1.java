@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.Objects;
 
+/**
+ *  @deprecated FaaSError will be used after transition to V2 Functions
+ */
 @JsonIgnoreProperties(value = {"errorLogs"})
 public class FaaSErrorV1 {
     private String errorCode;
