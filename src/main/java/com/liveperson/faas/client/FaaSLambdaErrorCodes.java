@@ -1,5 +1,6 @@
 package com.liveperson.faas.client;
 
+import java.util.Arrays;
 
 /**
  *  V1 Functions error codes
@@ -22,12 +23,8 @@ public enum FaaSLambdaErrorCodes {
     }
 
     public static boolean contains(String test) {
-        for (FaaSLambdaErrorCodes c : FaaSLambdaErrorCodes.values()) {
-            if (c.getCode().equals(test)) {
-                return true;
-            }
-        }
-
-        return false;
+        return Arrays.stream(FaaSLambdaErrorCodes.values())
+                .map(FaaSLambdaErrorCodes::getCode)
+                .anyMatch(c -> c.equals(test));
     }
 }

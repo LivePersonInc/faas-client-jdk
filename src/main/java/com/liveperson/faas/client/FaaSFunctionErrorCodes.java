@@ -1,9 +1,11 @@
 package com.liveperson.faas.client;
 
+import java.util.Arrays;
+
 /**
  * V2 Functions error Codes
  */
- public enum FaaSFunctionErrorCodes {
+public enum FaaSFunctionErrorCodes {
     CUSTOM_FAILURE("com.customer.faas.function.threw-error"),
     RUNTIME_EXCEPTION("com.customer.faas.function.js-runtime-error"),
     EXECUTION_WINDOW_EXCEEDED("com.customer.faas.function.execution-exceeded");
@@ -19,12 +21,8 @@ package com.liveperson.faas.client;
     }
 
     public static boolean contains(String test) {
-        for (FaaSFunctionErrorCodes c : FaaSFunctionErrorCodes.values()) {
-            if (c.getCode().equals(test)) {
-                return true;
-            }
-        }
-
-        return false;
+        return Arrays.stream(FaaSFunctionErrorCodes.values())
+                .map(FaaSFunctionErrorCodes::getCode)
+                .anyMatch(c -> c.equals(test));
     }
 }
