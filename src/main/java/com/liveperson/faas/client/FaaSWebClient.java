@@ -227,13 +227,12 @@ public class FaaSWebClient implements FaaSClient {
     @Override
     public boolean isV2Domain() throws CsdsRetrievalException {
         String domain = this.getGWDomain();
-        return domain.contains("fninvocations");
+        return domain != null && domain.contains("fninvocations");
     }
 
     private boolean isEventImplementedV1(String lpEventSource, String event, OptionalParams optionalParams)
             throws FaaSException {
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -277,8 +276,7 @@ public class FaaSWebClient implements FaaSClient {
 
     private boolean isEventImplemented(String lpEventSource, String event, OptionalParams optionalParams)
             throws FaaSException {
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -346,8 +344,7 @@ public class FaaSWebClient implements FaaSClient {
             throw new FaaSException("Cannot get V1 Functions for a V2 Account: " + accountId
                     + ". Please use getFunctions() method instead");
 
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -394,8 +391,7 @@ public class FaaSWebClient implements FaaSClient {
             throw new FaaSException("Cannot get V2 Functions for a V1 Account: " + accountId
                     + ". Please use getLambdas() method instead");
 
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -448,8 +444,7 @@ public class FaaSWebClient implements FaaSClient {
     @Deprecated
     private <T, R> T invokeWithUriV1(String lpEventSource, FaaSInvocation<R> data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -489,8 +484,7 @@ public class FaaSWebClient implements FaaSClient {
      */
     private <T, R> T invokeWithUri(String lpEventSource, FaaSInvocation<R> data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -536,8 +530,7 @@ public class FaaSWebClient implements FaaSClient {
 
     private <R> void invokeWithUriNoResponse(String lpEventSource, FaaSInvocation<R> data, String invokeUri,
             OptionalParams optionalParams) throws FaaSException {
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -574,8 +567,7 @@ public class FaaSWebClient implements FaaSClient {
 
     private void invokeWithUriNoResponseV1(String lpEventSource, FaaSInvocation data, String invokeUri,
             OptionalParams optionalParams) throws FaaSException {
-        String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
-                : optionalParams.getRequestId();
+        String requestId = optionalParams.getRequestId();
         int timeOutInMs = optionalParams.getTimeOutInMs();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
