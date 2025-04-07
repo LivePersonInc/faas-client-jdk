@@ -31,7 +31,7 @@ public interface FaaSClient {
          * @return the response object of type responseType
          * @throws FaaSException when error occurs during function invocation
          */
-        <T, R> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
+        <T, R> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation<R> data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
         /**
@@ -47,7 +47,7 @@ public interface FaaSClient {
          * @return the response object of type responseType
          * @throws FaaSException when error occurs during function invocation
          */
-        <T, R> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
+        <T, R> T invokeByEvent(String lpEventSource, String event, FaaSInvocation<R> data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
         /**
@@ -61,7 +61,8 @@ public interface FaaSClient {
          * @param optionalParams optional Parameters for request - requestId and timeOut
          * @throws FaaSException when error occurs during function invocation
          */
-        void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, OptionalParams optionalParams)
+        <R> void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation<R> data,
+                        OptionalParams optionalParams)
                         throws FaaSException;
 
         /**
@@ -75,7 +76,8 @@ public interface FaaSClient {
          * @param optionalParams optional Parameters for request - requestId and timeOut
          * @throws FaaSException when error occurs during function invocation
          */
-        void invokeByEvent(String lpEventSource, String event, FaaSInvocation data, OptionalParams optionalParams)
+        <R> void invokeByEvent(String lpEventSource, String event, FaaSInvocation<R> data,
+                        OptionalParams optionalParams)
                         throws FaaSException;
 
         /**
@@ -92,7 +94,7 @@ public interface FaaSClient {
          * @return the response object of type responseType
          * @throws FaaSException when error occurs during function invocation
          */
-        <T, R> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
+        <T, R> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation<R> data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
         /**
@@ -107,7 +109,8 @@ public interface FaaSClient {
          * @param optionalParams optional Parameters for request - requestId and timeOut
          * @throws FaaSException when error occurs during function invocation
          */
-        void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, OptionalParams optionalParams)
+        <R> void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation<R> data,
+                        OptionalParams optionalParams)
                         throws FaaSException;
 
         /**

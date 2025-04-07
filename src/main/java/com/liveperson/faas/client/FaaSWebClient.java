@@ -102,11 +102,12 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public <T, R> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
+    public <T, R> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation<R> data,
+            Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
             }
         } catch (CsdsRetrievalException e) {
@@ -117,11 +118,11 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data,
+    public <R> void invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation<R> data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
                 return;
             }
@@ -133,11 +134,11 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public    <T, R> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
+    public <T, R> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation<R> data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
             }
         } catch (CsdsRetrievalException e) {
@@ -148,11 +149,11 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public     <T, R> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
+    public <T, R> T invokeByEvent(String lpEventSource, String event, FaaSInvocation<R> data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 return invokeWithUri(lpEventSource, data, responseType, invokeUri, optionalParams);
             }
         } catch (CsdsRetrievalException e) {
@@ -163,11 +164,11 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data,
+    public <R> void invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation<R> data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
                 return;
             }
@@ -179,11 +180,11 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public void invokeByEvent(String lpEventSource, String event, FaaSInvocation data,
+    public <R> void invokeByEvent(String lpEventSource, String event, FaaSInvocation<R> data,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 invokeWithUriNoResponse(lpEventSource, data, invokeUri, optionalParams);
                 return;
             }
@@ -198,7 +199,7 @@ public class FaaSWebClient implements FaaSClient {
             throws FaaSException {
         String eventId = event.toString();
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 return isEventImplemented(lpEventSource, eventId, optionalParams);
             }
         } catch (CsdsRetrievalException e) {
@@ -213,7 +214,7 @@ public class FaaSWebClient implements FaaSClient {
     public boolean isImplemented(String lpEventSource, String event, OptionalParams optionalParams)
             throws FaaSException {
         try {
-            if (this.isV2Domain()) {
+            if (isV2Domain()) {
                 return isEventImplemented(lpEventSource, event, optionalParams);
             }
         } catch (CsdsRetrievalException e) {
@@ -335,7 +336,7 @@ public class FaaSWebClient implements FaaSClient {
 
         boolean isFunctionsV2 = false;
         try {
-            isFunctionsV2 = this.isV2Domain();
+            isFunctionsV2 = isV2Domain();
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
             throw new FaaSException("A CSDS error occurred during check if account FaaSGW domain is V2", e);
@@ -383,7 +384,7 @@ public class FaaSWebClient implements FaaSClient {
             OptionalParams optionalParams) throws FaaSException {
         boolean isFunctionsV2 = false;
         try {
-            isFunctionsV2 = this.isV2Domain();
+            isFunctionsV2 = isV2Domain();
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
             throw new FaaSException("A CSDS error occurred during check if account FaaSGW domain is V2", e);
@@ -445,7 +446,7 @@ public class FaaSWebClient implements FaaSClient {
      * @deprecated will be removed once V1 is not available
      */
     @Deprecated
-    private <T, R> T invokeWithUriV1(String lpEventSource, FaaSInvocation data,
+    private <T, R> T invokeWithUriV1(String lpEventSource, FaaSInvocation<R> data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -486,7 +487,7 @@ public class FaaSWebClient implements FaaSClient {
     /*
      * V2 invocation
      */
-    private <T, R> T invokeWithUri(String lpEventSource, FaaSInvocation data,
+    private <T, R> T invokeWithUri(String lpEventSource, FaaSInvocation<R> data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -504,8 +505,8 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.POST.name());
 
-            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside generateRequestHeaders once V1 is fully
-                                                          // deprecated
+            // TODO: Move inside generateRequestHeaders once V1 is fully deprecated
+            headers.put("LP-EventSource", lpEventSource);
 
             logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
             String response = restClient.post(url, headers, data.toString(),
@@ -533,7 +534,7 @@ public class FaaSWebClient implements FaaSClient {
         return lambdaOrEventName;
     }
 
-    private void invokeWithUriNoResponse(String lpEventSource, FaaSInvocation data, String invokeUri,
+    private <R> void invokeWithUriNoResponse(String lpEventSource, FaaSInvocation<R> data, String invokeUri,
             OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -551,7 +552,8 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.POST.name());
 
-            headers.put("LP-EventSource", lpEventSource); // TODO: add to generate Request Headers
+            // TODO: Move inside generateRequestHeaders once V1 is fully deprecated
+            headers.put("LP-EventSource", lpEventSource);
 
             logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
             restClient.post(url, headers, data.toString(), timeOutInMs);
