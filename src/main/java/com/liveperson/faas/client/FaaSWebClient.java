@@ -78,6 +78,8 @@ public class FaaSWebClient implements FaaSClient {
             " and " +
             "accountID %s. Error message was %s";
     private static final String CSDS_EXCEPTION_LOG = "Exception occurred for request to CSDS service for accountID %s. Error message was %s";
+    private static final String CSDS_EXCEPTION_ERROR = "A CSDS error occurred during check if is V2 functions";
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
     static Logger logger = LogManager.getLogger();
     private CsdsClient csdsClient;
@@ -100,7 +102,7 @@ public class FaaSWebClient implements FaaSClient {
     }
 
     @Override
-    public <T> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
+    public <T, R> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_UUID_URI, accountId, functionUUID);
         try {
@@ -109,7 +111,7 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
@@ -125,13 +127,13 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
 
     @Override
-    public <T> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
+    public    <T, R> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
         try {
@@ -140,13 +142,13 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
 
     @Override
-    public <T> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
+    public     <T, R> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
             OptionalParams optionalParams) throws FaaSException {
         String invokeUri = String.format(FaaSWebClient.INVOKE_EVENT_URI, accountId, event);
         try {
@@ -155,7 +157,7 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         return invokeWithUriV1(lpEventSource, data, responseType, invokeUri, optionalParams);
     }
@@ -171,7 +173,7 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
@@ -187,7 +189,7 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         invokeWithUriNoResponseV1(lpEventSource, data, invokeUri, optionalParams);
     }
@@ -201,7 +203,7 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
 
         return isEventImplementedV1(lpEventSource, eventId, optionalParams);
@@ -216,7 +218,7 @@ public class FaaSWebClient implements FaaSClient {
             }
         } catch (CsdsRetrievalException e) {
             logger.error(String.format(CSDS_EXCEPTION_LOG, accountId, e.getMessage()));
-            throw new FaaSException("A CSDS error occurred during check if is V2 functions", e);
+            throw new FaaSException(CSDS_EXCEPTION_ERROR, e);
         }
         return isEventImplementedV1(lpEventSource, event, optionalParams);
     }
@@ -292,7 +294,8 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.GET.name());
 
-            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside generateRequestHeaders once V1 is fully deprecated
+            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside generateRequestHeaders once V1 is fully
+                                                          // deprecated
 
             String response = restClient.get(url, headers, timeOutInMs);
 
@@ -442,7 +445,7 @@ public class FaaSWebClient implements FaaSClient {
      * @deprecated will be removed once V1 is not available
      */
     @Deprecated
-    private <T> T invokeWithUriV1(String lpEventSource, FaaSInvocation data,
+    private <T, R> T invokeWithUriV1(String lpEventSource, FaaSInvocation data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -483,7 +486,7 @@ public class FaaSWebClient implements FaaSClient {
     /*
      * V2 invocation
      */
-    private <T> T invokeWithUri(String lpEventSource, FaaSInvocation data,
+    private <T, R> T invokeWithUri(String lpEventSource, FaaSInvocation data,
             Class<T> responseType, String invokeUri, OptionalParams optionalParams) throws FaaSException {
         String requestId = optionalParams.getRequestId().equals("") ? UUID.randomUUID().toString()
                 : optionalParams.getRequestId();
@@ -501,7 +504,8 @@ public class FaaSWebClient implements FaaSClient {
             Map<String, String> headers = generateRequestHeaders(this.getGWDomain(), url, requestId,
                     HttpMethod.POST.name());
 
-            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside generateRequestHeaders once V1 is fully deprecated
+            headers.put("LP-EventSource", lpEventSource); // TODO: Move inside generateRequestHeaders once V1 is fully
+                                                          // deprecated
 
             logger.info(String.format(REQUEST_LOG_INVOKE, requestId, accountId, url, data));
             String response = restClient.post(url, headers, data.toString(),
