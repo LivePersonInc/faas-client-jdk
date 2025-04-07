@@ -302,7 +302,10 @@ public class FaaSClientTest {
         @Test(expected = FaaSDetailedException.class)
         public void invokeViaUUIDThrowsFaasDetailedException() throws IOException, FaaSException {
                 try {
-                        FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+                        FaaSError faaSError = new FaaSError();
+                        faaSError.setCode("faas.error.code");
+                        faaSError.setMessage("My custom error.");
+
                         RestException exception = new RestException("Error during rest call.",
                                         objectMapper.writeValueAsString(faaSError),
                                         500);
@@ -328,8 +331,9 @@ public class FaaSClientTest {
                         long timestamp = System.currentTimeMillis();
                         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                         invocationData.setTimestamp(timestamp);
-                        FaaSError faaSError = new FaaSError(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(),
-                                        "My custom error.");
+                        FaaSError faaSError = new FaaSError();
+                        faaSError.setCode(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode());
+                        faaSError.setMessage("My custom error.");
 
                         when(restClientMock.post(eq(getExpectedInvokeUUIDUrl()), httpHeaderCaptor.capture(),
                                         httpBodyCaptor.capture(), eq(defaultTimeOut)))
@@ -614,9 +618,9 @@ public class FaaSClientTest {
                         long timestamp = System.currentTimeMillis();
                         FaaSInvocation<String> invocationData = new FaaSInvocation<String>(null, null);
                         invocationData.setTimestamp(timestamp);
-                        FaaSError faaSError = new FaaSError(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode(),
-                                        "My custom error.");
-
+                        FaaSError faaSError = new FaaSError();
+                        faaSError.setCode(FaaSFunctionErrorCodes.CUSTOM_FAILURE.getCode());
+                        faaSError.setMessage("My custom error.");
                         when(restClientMock.post(eq(getExpectedInvokeEventUrl()), httpHeaderCaptor.capture(),
                                         httpBodyCaptor.capture(), eq(defaultTimeOut)))
                                         .thenThrow(new RestException("Error during rest call.",
@@ -729,7 +733,9 @@ public class FaaSClientTest {
         @Test(expected = FaaSDetailedException.class)
         public void getFunctionsThrowFaaSDetailedException() throws Exception {
                 try {
-                        FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+                        FaaSError faaSError = new FaaSError();
+                        faaSError.setCode("faas.error.code");
+                        faaSError.setMessage("My custom error.");
 
                         when(restClientMock.get(eq(getExpectedFunctionsOfAnAccountUrl()), anyMap(), eq(defaultTimeOut)))
                                         .thenThrow(new RestException("Error during call.",
@@ -799,7 +805,6 @@ public class FaaSClientTest {
 
         }
 
-
         @Test
         public void isImplementedStringEventRetrievedFromCache() throws Exception {
                 String noDefinedEvent = "some-event";
@@ -810,7 +815,8 @@ public class FaaSClientTest {
                 when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(),
                                 eq(defaultTimeOut))).thenReturn(
                                                 "{\"implemented\": true}");
-                when(defaultIsImplementedCacheMock.getIfCachedAndValid(eq(noDefinedEvent.toString()))).thenReturn(eventExpiry);
+                when(defaultIsImplementedCacheMock.getIfCachedAndValid(eq(noDefinedEvent.toString())))
+                                .thenReturn(eventExpiry);
 
                 boolean isImplemented = client.isImplemented(lpEventSource, noDefinedEvent, optionalParams);
 

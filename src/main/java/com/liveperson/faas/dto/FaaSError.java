@@ -11,11 +11,6 @@ public class FaaSError {
     public FaaSError() {
     }
 
-    public FaaSError(String code, String message) {
-        this.code = code;
-        this.message = message;
-    }
-
     public String getCode() {
         return code;
     }
