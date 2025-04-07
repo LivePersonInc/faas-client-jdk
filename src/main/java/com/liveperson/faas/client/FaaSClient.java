@@ -31,7 +31,7 @@ public interface FaaSClient {
          * @return the response object of type responseType
          * @throws FaaSException when error occurs during function invocation
          */
-        <T> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
+        <T, R> T invokeByEvent(String lpEventSource, FaaSEvent event, FaaSInvocation data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
         /**
@@ -47,7 +47,7 @@ public interface FaaSClient {
          * @return the response object of type responseType
          * @throws FaaSException when error occurs during function invocation
          */
-        <T> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
+        <T, R> T invokeByEvent(String lpEventSource, String event, FaaSInvocation data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
         /**
@@ -92,11 +92,12 @@ public interface FaaSClient {
          * @return the response object of type responseType
          * @throws FaaSException when error occurs during function invocation
          */
-        <T> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
+        <T, R> T invokeByUUID(String lpEventSource, String functionUUID, FaaSInvocation data, Class<T> responseType,
                         OptionalParams optionalParams) throws FaaSException;
 
         /**
-         * Invoking a function per brand via the RESTful api by function UUID but does not
+         * Invoking a function per brand via the RESTful api by function UUID but does
+         * not
          * return response of invocation
          *
          * @param lpEventSource  the name of the source system doing the invocation
@@ -142,10 +143,12 @@ public interface FaaSClient {
          *                            eventId, name
          * @param optionalParams      optional Parameters for request - requestId and
          *                            timeOut
-         * @return A list of functions that belong that the above account filtered by the
+         * @return A list of functions that belong that the above account filtered by
+         *         the
          *         optionalQueryParams
          * @throws FaaSException when error occurs during getLambdas request
-         * @deprecated Compatible Only with V1 Functions. For V2 use 'getFunctions' instead.
+         * @deprecated Compatible Only with V1 Functions. For V2 use 'getFunctions'
+         *             instead.
          * 
          */
         List<LambdaResponse> getLambdas(String userId, Map<String, String> optionalQueryParams,
@@ -178,5 +181,5 @@ public interface FaaSClient {
          * @throws CsdsRetrievalException
          * @deprecated Once transition to V2 is completed will be removed.
          */
-         boolean isV2Domain() throws CsdsRetrievalException;
+        boolean isV2Domain() throws CsdsRetrievalException;
 }
