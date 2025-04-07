@@ -799,6 +799,28 @@ public class FaaSClientTest {
 
         }
 
+
+        @Test
+        public void isImplementedStringEventRetrievedFromCache() throws Exception {
+                String noDefinedEvent = "some-event";
+                FaaSEventImplementedExpiry eventExpiry = new FaaSEventImplementedExpiry();
+                eventExpiry.setImplemented(true);
+                eventExpiry.setExpirationDate(LocalDateTime.now().plusMinutes(2));
+
+                when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(),
+                                eq(defaultTimeOut))).thenReturn(
+                                                "{\"implemented\": true}");
+                when(defaultIsImplementedCacheMock.getIfCachedAndValid(eq(noDefinedEvent.toString()))).thenReturn(eventExpiry);
+
+                boolean isImplemented = client.isImplemented(lpEventSource, noDefinedEvent, optionalParams);
+
+                verify(metricCollectorMock, times(0)).onIsImplementedSuccess(eq(lpEventSource), anyFloat(),
+                                eq(event.toString()), eq(accountId));
+                assertTrue("Lambda should be implemented", isImplemented);
+                verify(restClientMock, times(0)).get(any(), any(), eq(optionalParams.getTimeOutInMs()));
+
+        }
+
         @Test
         public void isImplementedEventNoCacheWithDPoP() throws Exception {
                 when(restClientMock.get(eq(getExpectedIsImplementedUrl()), httpHeaderCaptor.capture(),
