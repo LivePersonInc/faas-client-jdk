@@ -117,7 +117,7 @@ Using the map reduces the calls to the CSDS endpoint. If no `CsdsClient`is provi
 CsdsClient csdsClient = new YourCsdsClient();
 builder.withCsdsClient(CsdsClient csdsClient);
 or
-Map<String, String> csdsMap = new HashMap<String, String>;
+Map<String, String> csdsMap = new HashMap<>();
 builder.withCsdsMap(csdsMap);
 ```
 
@@ -183,7 +183,7 @@ try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build();
 
-    HashMap<String,String> filterMap = new HashMap<String, String>();
+    Map<String,String> filterMap = new HashMap<>();
     filterMap.put("state", "Draft") // Filter lambdas by state ("Draft", "Productive", "Modified", "Marked Undeployed")
     filterMap.put("eventId", FaaSEvent.ControllerBotMessagingNewConversation.toString()); // Filter lambdas by event name (also substring)
     filterMap.put("name", "lambda_substring") // Filter lambdas by name substring
@@ -201,7 +201,7 @@ try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build();
 
-    HashMap<String,String> filterMap = new HashMap<String, String>();
+    Map<String,String> filterMap = new HashMap<>();
     filterMap.put("state", "Draft") // Filter lambdas by state ("Draft", "Productive", "Modified", "Marked Undeployed")
     filterMap.put("eventId", FaaSEvent.ControllerBotMessagingNewConversation.toString()); // Filter lambdas by event name (also substring)
     filterMap.put("functionName", "lambda_substring") // Filter lambdas by name substring
@@ -226,7 +226,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -257,7 +257,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -302,7 +302,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -340,7 +340,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
