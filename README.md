@@ -10,6 +10,34 @@ For more details on LivePerson Functions & its API have a look at:
 
 * [LivePerson Functions Overview](https://developers.liveperson.com/liveperson-functions-overview.html)
 
+## 🚨 Important Project Update: Functions V2 compatibility released! 🚨
+
+We are excited to announce a **major update** to our client: **Functions V2** is now available! 🎉
+
+### What's New?
+
+* **Naming Conventions:** For Functions V1, "Lambda" is used instead of "Function." For V2, "Function" is used, and any reference to "Lambda" refers to the Functions Platform V1.
+* **Client Compatibility:** The client is fully compatible with both Functions V1 and V2. It has been designed to minimize the need for changes. The client will automatically call the appropriate platform (V1 or V2) based on your account's CSDS domain for the "Invoke" and "isImplemented" methods.
+* **Getting Functions/Lambdas:** To retrieve functions/lambdas, you need to call the appropriate method based on your account version (V1 or V2). A method, *isV2Domain*, is provided to help with this. 
+* **Error Response Changes:** The error response body returned by the V2 platform has changed. For more details, refer to the [Exception Handling](#exception-handling) section.
+* **Updated/Added Methods:**
+  * *getFunctions* – Now required for retrieving V2 functions as a *FunctionResponse* object.
+  * *isV2Domain* – Determines whether the accounts associated with the client instance have a V2 domain from the CSDS.
+  * *ExternalSystem* has been renamed to *LpEventSource*.
+  * *FaaSError* contains now the V2 error while the *FaaSErrorV1* used for V1.
+
+### How to Use the New Features
+
+The client should continue to function as it did before, automatically calling either the V1 or V2 platform based on the account configuration for the "Invoke" and "isImplemented" methods. If you're handling function errors from the error response body within the client response payload, be aware that the V2 error format has changed. You'll need to adjust your handling logic accordingly. For more details, refer to the [Exception Handling](#exception-handling) section.
+
+**IMPORTANT**: If you're using *getFunctions*/*getLambdas*, be aware that the function data type has changed in V2. For V2, a list of *FunctionResponse* objects will be returned, while for V1, a list of *LambdaResponse* objects will be returned. Use the *isV2Domain* method to implement logic that calls the appropriate method based on the account version.
+
+### Action Required
+
+* Update the client to Version 2.x.x.
+* Adjust your error handling for V2 accounts. For more details, refer to the [Exception Handling](#exception-handling) section.
+* Modify your code to handle the response from *getFunctions*/*getLambdas* correctly, in case you're using these methods.
+
 ## Adding the client as maven dependency
 
 Go to your project's pom.xml file and add as dependency.
@@ -18,7 +46,7 @@ Go to your project's pom.xml file and add as dependency.
 <dependency>
   <groupId>com.liveperson.faas</groupId>
   <artifactId>functions-client</artifactId>
-  <version>1.2.2</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 
@@ -89,7 +117,7 @@ Using the map reduces the calls to the CSDS endpoint. If no `CsdsClient`is provi
 CsdsClient csdsClient = new YourCsdsClient();
 builder.withCsdsClient(CsdsClient csdsClient);
 or
-Map<String, String> csdsMap = new HashMap<String, String>;
+Map<String, String> csdsMap = new HashMap<>();
 builder.withCsdsMap(csdsMap);
 ```
 
@@ -99,8 +127,8 @@ builder.withCsdsMap(csdsMap);
 <details><summary>isImplementedCache</summary>
 <p>
 
-You can set the IsImplementedCache for the `isImplemented` method which determines whether there are deployed lambdas that implement a given event.
-By instantiating the client yourself you can set a custom caching time. Otherwise we will default back to 60 seconds. 
+You can set the IsImplementedCache for the `isImplemented` method which determines whether there are deployed functions that implement a given event.
+By instantiating the client yourself you can set a custom caching time. Otherwise we will default back to 60 seconds.
 
 ```java
 int cachingTimeInSeconds = 30;
@@ -126,8 +154,8 @@ builder.withMetricCollector(metricCollector);
 ### Preparing data for RESTful API calls
 
 ```java
-String lambdaUUID = "UUID";
-String externalSystem = "botStudio";
+String functionUUID = "UUID";
+String lpEventSource = "botStudio";
 ```
 
 Optional params allow you to set a timeout for the function calls and to set a requestId. 
@@ -141,22 +169,21 @@ optionalParams.setTimeOutInMs(40000)
 optionalParams.setRequestId("requestId");
 ```
 
+### Fetching functions
 
-### Fetching lambdas
+**You have to use your own authentication method when fetching functions as it relies on OAuth 1.0. / Oauth 2.0 + DPoP**
 
-
-**You have to use your own authentication method when fetching lambdas as it relies on OAuth 1.0. / Oauth 2.0 + DPoP**
-
-
-<details><summary>Fetching lambdas of account</summary>
+<details><summary>Fetching functions of account</summary>
 <p>
+
+For V1 functions use *getLambdas* method.
 
 ```java
 try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build();
 
-    HashMap<String,String> filterMap = new HashMap<String, String>();
+    Map<String,String> filterMap = new HashMap<>();
     filterMap.put("state", "Draft") // Filter lambdas by state ("Draft", "Productive", "Modified", "Marked Undeployed")
     filterMap.put("eventId", FaaSEvent.ControllerBotMessagingNewConversation.toString()); // Filter lambdas by event name (also substring)
     filterMap.put("name", "lambda_substring") // Filter lambdas by name substring
@@ -167,12 +194,30 @@ try {
 } catch (FaaSException e) {...}
 ```
 
+For V2 functions use *getFunctions* method.
+
+```java
+try {
+    // After setting the builder up, instantiate the client
+    FaasClient faasClient = builder.build();
+
+    Map<String,String> filterMap = new HashMap<>();
+    filterMap.put("state", "Draft") // Filter lambdas by state ("Draft", "Productive", "Modified", "Marked Undeployed")
+    filterMap.put("eventId", FaaSEvent.ControllerBotMessagingNewConversation.toString()); // Filter lambdas by event name (also substring)
+    filterMap.put("functionName", "lambda_substring") // Filter lambdas by name substring
+
+    List<FunctionResponse> lambdas = client.getFunctions(userId, filterMap, optionalParams);
+    ...
+
+} catch (FaaSException e) {...}
+```
+
 </p>
 </details>
 
-### Invoking lambda by UUID
+### Invoking function by UUID
 
-<details><summary>Invoking a lambda by UUID with response</summary>
+<details><summary>Invoking a function by UUID with response</summary>
 <p>
 
 ```java
@@ -181,7 +226,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -191,10 +236,10 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build()
-    User result = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, User.class, optionalParams);
+    User result = client.invokeByUUID(lpEventSource, functionUUID, invocationData, User.class, optionalParams);
     //Or call it with a requestID:
     String requestId = "requestId";
-    User result = client.invokeByUUID(externalSystem, lambdaUUID, invocationData, User.class, requestId, optionalParams);
+    User result = client.invokeByUUID(lpEventSource, functionUUID, invocationData, User.class, requestId, optionalParams);
     ...
 
 } catch (FaaSException e) {...}
@@ -212,7 +257,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -221,7 +266,7 @@ FaaSInvocation<User> invocationData = new FaaSInvocation(headers, payload);
 try {
     // After setting the builder up, instantiate the client
     FaasClient faasClient = builder.build()
-    client.invokeByUUID(externalSystem, lambdaUUID, invocationData, optionalParams);
+    client.invokeByUUID(lpEventSource, functionUUID, invocationData, optionalParams);
 
 } catch (FaaSException e) {...}
 ```
@@ -231,7 +276,7 @@ try {
 
 ### Invoking lambda by Event
 
-Calling by event invokes all deployed lambdas that implement the given event.
+Calling by event invokes all deployed functions that implement the given event.
 The result will therefore always be an array of objects the following structure:
 
 ```java
@@ -248,7 +293,7 @@ public class Response {
 }
 ```
 
-<details><summary>Invoking a lambda by event with response</summary>
+<details><summary>Invoking a function by event with response</summary>
 <p>
 
 ```java
@@ -257,7 +302,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -269,11 +314,11 @@ try {
     FaasClient faasClient = builder.build()
 
     //Check if lambdas are implemented for event
-    boolean isImplemented = client.isImplemented(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript);
+    boolean isImplemented = client.isImplemented(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript);
 
     if(isImplemented){
         //Invoke lambdas for event
-        Response[] result = client.invokeByEvent(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
+        Response[] result = client.invokeByEvent(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
 
         // cast to list for convenience
         List<Response> = Arrays.asList(result);
@@ -286,7 +331,7 @@ try {
 </p>
 </details>
 
-<details><summary>Invoking a lambda by event without response</summary>
+<details><summary>Invoking a function by event without response</summary>
 <p>
 
 ```java
@@ -295,7 +340,7 @@ User payload = new User();
 payload.name = "John Doe";
 
 //Set header
-Map<String, String> headers = new HashMap<String, String>() {{
+Map<String, String> headers = new HashMap<>() {{
     put("Accept-Language", "en-US");
 }};
 
@@ -306,11 +351,11 @@ try {
     FaasClient faasClient = builder.build()
 
     //Check if lambdas are implemented for event
-    boolean isImplemented = client.isImplemented(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript);
+    boolean isImplemented = client.isImplemented(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript);
 
     if(isImplemented){
         //Invoke lambdas for event
-        client.invokeByEvent(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, optionalParams);
+        client.invokeByEvent(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, optionalParams);
     }
     ...
 
@@ -328,15 +373,15 @@ provide a string.`
 
 ```java
      //Check if lambdas are implemented for event
-    boolean isImplemented = client.isImplemented(externalSystem, event);
+    boolean isImplemented = client.isImplemented(lpEventSource, event);
 
     //With return type: 
     if(isImplemented) {
-        Response[] result = client.invokeByEvent(externalSystem, event, invocationData, Response[].class, optionalParams);
+        Response[] result = client.invokeByEvent(lpEventSource, event, invocationData, Response[].class, optionalParams);
     }
     //Without return type:
     if(isImplemented) {
-        client.invokeByEvent(externalSystem, event, invocationData, optionalParams);
+        client.invokeByEvent(lpEventSource, event, invocationData, optionalParams);
     }
 ```
 
@@ -366,20 +411,38 @@ More detailed information about Log4j2 can be found [here](https://logging.apach
 </p>
 </details>
 
-## Exception handling
+## Exception Handling
 
-LivePerson Functions can raise different kind of exceptions. General exceptions are wrapped in a `FaaSException`.
-`FaaSDetailedException`s occur when the request has been rejected by the service. For instance if the UUID of the lambda for invocation request does not exist. In order to get more details we recommend using the `getFaaSError` method. For a list of all error codes see [here](https://developers.liveperson.com/liveperson-functions-external-invocations-error-codes.html).
-`FaaSLambdaException` inherits from `FaaSDetailedException`. It is only raised during invocations, if the error is caused by the implementation of the lambda itself. For instance if the lambda returns an error on purpose or the lambda has a timeout. We recommend to monitor all the exceptions by using `e.printStackTrace()`, as this provides way more details then the error message alone. Alerting should only be done for `FaaSException`s or `FaaSDetailedException`.
+LivePerson Functions can raise different types of exceptions. These exceptions are generally wrapped in a `FaaSException`.
+
+* **`FaaSDetailedException`**: This occurs when the request is rejected by the service, such as when the UUID of the lambda in the invocation request does not exist. To get more details, we recommend using the `getFaaSError` method. For a list of all error codes, see [here](https://developers.liveperson.com/liveperson-functions-external-invocations-error-codes.html).
+
+### For V1 Platform
+
+* **`FaaSLambdaException`** inherits from `FaaSDetailedExceptionV1`. It is thrown during invocations if the error is caused by the implementation of the lambda itself (e.g., the lambda returns an error on purpose or has a timeout).
+* We recommend monitoring all exceptions using `e.printStackTrace()` since it provides much more detail than the error message alone.
+* Alerting should only be set up for `FaaSException` or `FaaSDetailedExceptionV1`.
+
+### For V2 Platform
+
+* **`FaaSFunctionException`** inherits from `FaaSDetailedException`. It is thrown during invocations if the error is caused by the function implementation itself (e.g., the function returns an error on purpose or has a timeout).
+* Similarly, monitor all exceptions using `e.printStackTrace()` to capture more details.
+* Alerting should only be set up for `FaaSException` or `FaaSDetailedException`.
+
+### Key Changes in V2
+
+* The error response object structure has changed.
+  * **ErrorCode** is now represented as **code**.
+  * **errorMessage** is now **message**.
 
 ```java
 try {
     ...
     //Invoke lambdas for event
-    Response[] result = client.invoke(externalSystem, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
+    Response[] result = client.invoke(lpEventSource, FaaSEvent.DenverPostSurveyEmailTranscript, invocationData, Response[].class, optionalParams);
     ...
 
-} catch (FaaSLambdaException e){
+} catch (FaaSLambdaException e){ // V1 Functions
   /**
    * Lambda exceptions occur when the lambda fails due to the implementation.
    * These exceptions are not relevant for alerting, because there are no issues with the service itself.
@@ -387,12 +450,38 @@ try {
   e.printStackTrace();
 
   //Get Details of exception
-  FaaSError faaSError = e.getFaaSError();
+  FaaSErrorV1 faaSError = e.getFaaSError();
 
   faaSError.getErrorCode();
   faaSError.getErrorMsg();
+
+} catch (FaaSFunctionException e){ // V2 Functions
+  /**
+   * Function exceptions occur when the function fails due to the implementation.
+   * These exceptions are not relevant for alerting, because there are no issues with the service itself.
+   */
+  e.printStackTrace();
+
+  //Get Details of exception
+  FaaSError faaSError = e.getFaaSError();
+ 
+  faaSError.getCode(); 
+  faaSError.getMessage();
 }
-catch (FaaSDetailedException e) {
+catch (FaaSDetailedExceptionV1 e) { // V1 functions
+  /**
+   * Detailed Exceptions contain custom error codes that give more information.
+   * These errors are relevant for alerting
+   */
+  e.printStackTrace();
+
+  //Get Details of exception
+  FaaSErrorV1 faaSError = e.getFaaSError();
+
+  faaSError.getErrorCode(); 
+  faaSError.getErrorMsg();
+}
+catch (FaaSDetailedException e) { // Now V2 function
   /**
    * Detailed Exceptions contain custom error codes that give more information.
    * These errors are relevant for alerting
@@ -402,8 +491,8 @@ catch (FaaSDetailedException e) {
   //Get Details of exception
   FaaSError faaSError = e.getFaaSError();
 
-  faaSError.getErrorCode();
-  faaSError.getErrorMsg();
+  faaSError.getCode(); 
+  faaSError.getMessage();
 } catch (FaaSException e){
   /**
    * All general errors are wrapped in a FaaSException (i.e. parsing the JSON response, or 401 on authentication).             *
@@ -424,19 +513,18 @@ The methods themselves are called in the appropriate place.
 
 ### Test setup
 
-For the system tests to run you will have to create a .env with following values and remove the @Ignore in the file.
-They are disabled by default as they are just for local testing not for the CI.
-
+For the system tests to run you will have to create a .env with following values.
 
 ```java
+FUNCTION_UUID=
 ACCOUNT_ID=
-SUCCESS_LAMBDA_UUID=
-FAILURE_LAMBDA_UUID=
 CLIENT_ID=
 CLIENT_SECRET=
-EVENT=
-FAILURE_EVENT=
-UNIMPLEMENTED_EVENT=
-UNIMPLEMENTED_EVENT_AS_STRING=
-EVENT_AS_STRING=
+CLIENT_SECRET=
+ACCOUNT_ID_V1=
+LAMBDA_UUID_V1=
+CLIENT_ID_V1=
+CLIENT_SECRET_V1=
+USER_NAME=
+PASSWORD=
 ```

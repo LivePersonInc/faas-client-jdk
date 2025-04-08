@@ -1,6 +1,6 @@
 package com.liveperson.faas.exception;
 
-import com.liveperson.faas.dto.FaaSError;
+import com.liveperson.faas.dto.FaaSErrorV1;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
@@ -11,10 +11,10 @@ public class FaaSDetailedExceptionTest {
     @Test
     public void getCauseShouldBeRestException(){
         //Set method mocks for mock objects
-        FaaSError faaSError = new FaaSError("faas.error.code", "My custom error.");
+        FaaSErrorV1 faaSError = new FaaSErrorV1("faas.error.code", "My custom error.");
         RestException restException = new RestException("Oops", "Oops", 500);
 
-        FaaSDetailedException e = new FaaSDetailedException(faaSError, restException);
+        FaaSDetailedExceptionV1 e = new FaaSDetailedExceptionV1(faaSError, restException);
 
         assertEquals(faaSError, e.getFaaSError());
         assertEquals(e.getCause().getResponse(), restException.getResponse());
