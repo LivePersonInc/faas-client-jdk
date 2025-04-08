@@ -1,6 +1,4 @@
 
-[![Build Status](https://travis-ci.com/LivePersonInc/faas-client-jdk.svg?branch=develop)](https://travis-ci.com/LivePersonInc/faas-client-jdk)
-
 # Functions-Client (Java)   ![Alt text](logo.png "Logo")
 
 The client can be used for invoking lambdas that have been deployed on LivePerson Functions site.
