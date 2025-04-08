@@ -272,7 +272,7 @@ class AuthSignature implements AuthSignatureBuilder {
 
     public AuthSignature() throws TokenGenerationException {
         String env = System.getenv("ENV");
-        if (env != "prod") {
+        if (env != "PROD") {
             Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
             accountId = dotenv.get("ACCOUNT_ID");
             username = dotenv.get("USER_NAME");
