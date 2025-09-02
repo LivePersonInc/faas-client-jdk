@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 
 public class CsdsWebClientTest {
 
-    private static final String ACCOUNT_ID = "account";
+    private static final String ACCOUNT_ID = "123456";
     private static final String SERVICE = "service";
     private static final String BASE_URI = "baseURI";
     private BaseURI baseURI;
@@ -74,8 +74,8 @@ public class CsdsWebClientTest {
 
     @Test
     public void getDomainSuccessDomainsNotYetInitalized() throws IOException, CsdsRetrievalException {
-        String csdsRetrivalUrl = String.format("http://%s/api/account/%s/service/baseURI.json?version=1.0",
-                "api.liveperson.net", ACCOUNT_ID);
+        String csdsRetrivalUrl = String.format("https://%s/api/account/%s/service/baseURI.json?version=1.0",
+                "adminlogin.liveperson.net", ACCOUNT_ID);
         String response = "response";
         BaseURIs baseURIs = new BaseURIs();
         baseURIs.setBaseURIS(baseURIList);

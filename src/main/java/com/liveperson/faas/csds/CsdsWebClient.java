@@ -33,7 +33,8 @@ public class CsdsWebClient implements CsdsClient {
                 .map(BaseURI::getBaseURI)
                 .orElseThrow(() -> new CsdsRetrievalException(String.format(
                         "Service with name %s could not be found " +
-                                "in domains", service)));
+                                "in domains",
+                        service)));
     }
 
     private List<BaseURI> getCachedDomains() throws CsdsRetrievalException {
@@ -41,7 +42,7 @@ public class CsdsWebClient implements CsdsClient {
             return cachedDomains;
         } else {
             BaseURIs baseURIs;
-            String csdsRetrivalUrl = String.format("http://%s/api/account/%s/service/baseURI.json?version=1.0",
+            String csdsRetrivalUrl = String.format("https://%s/api/account/%s/service/baseURI.json?version=1.0",
                     getCsdsDomain(), accountId);
             String response = null;
             try {
@@ -59,14 +60,19 @@ public class CsdsWebClient implements CsdsClient {
     }
 
     private String getCsdsDomain() {
-        if (accountId.startsWith("le") || accountId.startsWith("qa")) {
-            return "hc1n.dev.lprnd.net";
+        if (accountId.startsWith("le") || accountId.startsWith("qa") || accountId.startsWith("c")) {
+            return "csds-app.qa.int.gw.lpcloud.io";
         }
         if (accountId.startsWith("fr")) {
             return "adminlogin-z0-intg.liveperson.net";
         }
+
+        // new alpha
+        if (accountId.startsWith("a")) {
+            return "adminlogin-a.liveperson.net";
+        }
         // alpha/production
-        return "api.liveperson.net";
+        return "adminlogin.liveperson.net";
     }
 
     private boolean cachedDomainsInitialized() {
@@ -77,4 +83,3 @@ public class CsdsWebClient implements CsdsClient {
         return cacheExpiryDate.isBefore(LocalDateTime.now());
     }
 }
-
