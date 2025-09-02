@@ -59,8 +59,8 @@ public class CsdsWebClient implements CsdsClient {
     }
 
     private String getCsdsDomain() {
-        if (accountId.startsWith("le") || accountId.startsWith("qa")) {
-            return "hc1n.dev.lprnd.net";
+        if (accountId.startsWith("le") || accountId.startsWith("qa") || accountId.startsWith("c")) {
+            return "csds-app.qa.int.gw.lpcloud.io";
         }
         if (accountId.startsWith("fr")) {
             return "adminlogin-z0-intg.liveperson.net";

@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 
 public class CsdsWebClientTest {
 
-    private static final String ACCOUNT_ID = "account";
+    private static final String ACCOUNT_ID = "123456";
     private static final String SERVICE = "service";
     private static final String BASE_URI = "baseURI";
     private BaseURI baseURI;
