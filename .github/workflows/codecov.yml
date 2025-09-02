@@ -24,4 +24,4 @@ jobs:
       - name: Test with Maven
         run: mvn cobertura:cobertura
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v3.1.1
+        uses: codecov/codecov-action@v3.1.6
